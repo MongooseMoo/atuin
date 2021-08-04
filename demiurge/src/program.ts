@@ -1,4 +1,9 @@
 import { VM } from "vm2";
+import { WorldObject } from "./object";
+
+export enum ProgramTypes {
+  standard = "standard",
+}
 
 export interface ProgramContext {
   obj: any;
@@ -6,8 +11,13 @@ export interface ProgramContext {
 }
 
 export class Program {
-  programTimeout: number = 1000; // ms
-  constructor(public code: string[]) {}
+  timeout: number = 1000; // ms
+
+  constructor(
+    public code: string[],
+    public owner: WorldObject,
+    public type: ProgramTypes = ProgramTypes.standard
+  ) {}
 
   run(context: ProgramContext) {
     const code = this.code.join("\n");
@@ -15,11 +25,12 @@ export class Program {
     const result = VM.run(code);
     return result;
   }
-  createVM(context: any) {
+
+  createVM(context: ProgramContext) {
     return new VM({
       eval: false,
       wasm: false,
-      timeout: this.programTimeout,
+      timeout: this.timeout,
       sandbox: context,
     });
   }

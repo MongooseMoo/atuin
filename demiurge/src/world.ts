@@ -1,20 +1,29 @@
-import { OID, WorldObject } from "./object";
+import { AccessControl, Permission } from "role-acl";
+import { Actions, OID, WorldObject } from "./object";
+import { ProgramTypes } from "./program";
 
+Error.stackTraceLimit = Infinity;
 const RESTRICTED_ATTRIBUTES = ["programs"];
 const ProxyHandler = {
   get: function (obj: WorldObject, prop: string) {
+    const value = obj.properties.get(prop);
+    if (value) {
+      return value;
+    }
     const toRun = obj.programs.get(prop);
     if (!toRun) {
-      // @ts-expect-error
+      //@ts-ignore
       return obj[prop];
     }
-    return () => obj.run(prop, arguments);
+    return function () {
+      obj.run(prop, arguments);
+    };
   },
   set: function (obj: WorldObject, prop: string, value: any) {
     if (RESTRICTED_ATTRIBUTES.indexOf(prop) >= 0) {
       return false;
     }
-    // @ts-expect-error
+    //@ts-ignore
     obj[prop] = value;
     return true;
   },
@@ -22,18 +31,28 @@ const ProxyHandler = {
     if (RESTRICTED_ATTRIBUTES.indexOf(prop) >= 0) {
       return false;
     }
-    // @ts-expect-error
+    //@ts-ignore
     delete obj[prop];
     return true;
   },
 };
 
+export type ObjectProperty = string | number | null | OID;
+
 export class World {
-  private objects: Map<OID, WorldObject> = new Map();
+  programContext() {
+    return {
+      world: this,
+      ...this.builtins(),
+      ...this.objectRefs(),
+    };
+  }
+  public objects: Map<OID, WorldObject> = new Map();
   private proxies: Map<OID, any> = new Map();
+  public perms: AccessControl = new AccessControl();
   lastOid: OID = 0;
 
-  builtins(): object {
+  builtins() {
     const world = this;
     return {
       print: console.log,
@@ -77,6 +96,11 @@ export class World {
     oid = oid || obj.oid || this.newOid();
     this.objects.set(oid, obj);
     obj.oid = oid;
+    this.perms
+      .grant(obj.credentials)
+      .execute(Actions.read)
+      .execute(Actions.execute)
+      .on(ProgramTypes.standard);
   }
 
   newOid(): OID {
@@ -84,28 +108,26 @@ export class World {
     this.lastOid = oid;
     return oid;
   }
-}
 
-const world = new World();
-const obj = new WorldObject(world);
-obj.addProgram("hello", [
-  "print(`Hello, world from object ${obj.oid}!`)",
-  `const a = 1;
-  if (a) {
-  print('Assignment works!')
+  act(oid: OID, actionName: string, args = {}) {
+    const obj = this.objects.get(oid);
+    if (!obj) {
+      throw new Error("Object not found");
+    }
+
+    const action = obj.lookupAction(actionName);
+    if (!action) {
+      throw new Error("No such action");
+    }
+    const canRunPerm = this.perms
+      .can(obj.credentials)
+      .execute(Actions.execute)
+      .sync()
+      .on(String(obj)) as Permission;
+    if (!canRunPerm.granted) {
+      throw new Error("Access denied");
+    }
+
+    action.run(obj.programContext(args));
   }
-  obj.verify();
-  print("Obj is o1: ", obj === o1);
-  obj.programs = [];
-  obj.test = 1;
-  print("Set obj.test to ", obj.test);
-  print("toObj test "+ toObj(1));
-`,
-  "new Date().toString()",
-]);
-
-obj.addProgram("verify", [`print('This program was called')`]);
-
-world.addWorldObject(obj);
-const result = obj.run("hello");
-console.log("Program returned: ", result);
+}
