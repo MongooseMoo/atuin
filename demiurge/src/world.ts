@@ -54,13 +54,15 @@ export class World {
     oid = oid || obj.oid || this.newOid();
     this.objects.set(oid, obj);
     obj.oid = oid;
+
     this.perms
       .grant(obj.credentials)
-      .execute(Actions.read)
-      .on(ProgramTypes.standard)
-      .execute(Actions.create)
-      .on(ProgramTypes.standard)
-      .execute(Actions.execute)
+      // @ts-expect-error The type declaration is wrong
+      .execute([
+        String(Actions.read),
+        String(Actions.execute),
+        String(Actions.create),
+      ])
       .on(ProgramTypes.standard);
   }
 

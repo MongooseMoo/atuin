@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "role-acl": "^4.5.4",
+    "tslib": "^2.3.0",
     "vm2": "^3.9.3"
   },
   "devDependencies": {

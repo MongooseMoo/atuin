@@ -34,17 +34,18 @@ export class WorldObject {
     }
     const readPerms = this.world.perms
       .can(caller.credentials)
-      .context({ owner: prog.owner, caller: caller })
+      // .context({ owner: prog.owner, caller: caller })
       .execute(Actions.read)
       .sync()
       .on(prog.type) as Permission;
 
     const executePerms = this.world.perms
       .can(caller.credentials)
-      .context({ owner: prog.owner, caller: caller })
+      // .context({ owner: prog.owner, caller: caller })
       .execute(Actions.execute)
       .sync()
       .on(prog.type) as Permission;
+    console.log("Perms ", readPerms);
     if (!(readPerms.granted && executePerms.granted)) {
       throw new Error("Permission denied");
     }
@@ -67,6 +68,7 @@ export class WorldObject {
     programType: ProgramTypes = ProgramTypes.standard,
     owner: WorldObject = this
   ) {
+    console.log("current world perms ", this.world.perms.toJSON());
     const perm = this.world.perms
       .can(owner.credentials)
       .execute(Actions.create)
