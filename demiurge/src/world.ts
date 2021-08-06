@@ -1,70 +1,28 @@
 import { AccessControl, Permission } from "role-acl";
+import { worldBuiltins } from "./builtins";
 import { Actions, OID, WorldObject } from "./object";
 import { ProgramTypes } from "./program";
+import { WorldObjectProxyHandler } from "./proxy";
 
 Error.stackTraceLimit = Infinity;
-const RESTRICTED_ATTRIBUTES = ["programs"];
-const ProxyHandler = {
-  get: function (obj: WorldObject, prop: string) {
-    const value = obj.properties.get(prop);
-    if (value) {
-      return value;
-    }
-    const toRun = obj.programs.get(prop);
-    if (!toRun) {
-      //@ts-ignore
-      return obj[prop];
-    }
-    return function () {
-      obj.run(prop, arguments);
-    };
-  },
-  set: function (obj: WorldObject, prop: string, value: any) {
-    if (RESTRICTED_ATTRIBUTES.indexOf(prop) >= 0) {
-      return false;
-    }
-    //@ts-ignore
-    obj[prop] = value;
-    return true;
-  },
-  delete: function (obj: WorldObject, prop: string) {
-    if (RESTRICTED_ATTRIBUTES.indexOf(prop) >= 0) {
-      return false;
-    }
-    //@ts-ignore
-    delete obj[prop];
-    return true;
-  },
-};
-
 export type ObjectProperty = string | number | null | OID;
 
 export class World {
-  programContext() {
-    return {
-      world: this,
-      ...this.builtins(),
-      ...this.objectRefs(),
-    };
-  }
   public objects: Map<OID, WorldObject> = new Map();
   private proxies: Map<OID, any> = new Map();
   public perms: AccessControl = new AccessControl();
   lastOid: OID = 0;
+  builtins: any;
 
-  builtins() {
-    const world = this;
+  constructor() {
+    this.builtins = worldBuiltins(this);
+  }
+
+  programContext() {
     return {
-      print: console.log,
-
-      toObj: function (str: string) {
-        str = String(str);
-        const start = str.startsWith("o") ? 1 : 0;
-        const oid = parseInt(str.slice(start));
-        const obj = world.objects.get(oid);
-        if (!obj) throw new Error("No such object " + oid);
-        return obj;
-      },
+      world: this,
+      ...this.builtins,
+      ...this.objectRefs(),
     };
   }
 
@@ -86,7 +44,7 @@ export class World {
     const oid = obj.oid as OID;
     let proxy = this.proxies.get(oid);
     if (!proxy) {
-      proxy = new Proxy(obj, ProxyHandler);
+      proxy = new Proxy(obj, WorldObjectProxyHandler);
       this.proxies.set(oid, proxy);
     }
     return proxy;
@@ -99,6 +57,9 @@ export class World {
     this.perms
       .grant(obj.credentials)
       .execute(Actions.read)
+      .on(ProgramTypes.standard)
+      .execute(Actions.create)
+      .on(ProgramTypes.standard)
       .execute(Actions.execute)
       .on(ProgramTypes.standard);
   }

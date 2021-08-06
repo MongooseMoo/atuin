@@ -4,6 +4,7 @@ import { World } from "./world";
 
 const world = new World();
 const obj = new WorldObject(world);
+world.addWorldObject(obj);
 obj.addProgram(
   "hello",
   [
@@ -27,6 +28,5 @@ obj.addProgram(
 
 obj.addProgram("verify", [`print('This program was called')`]);
 
-world.addWorldObject(obj);
 const result = obj.run("hello");
 console.log("Program returned: ", result);
