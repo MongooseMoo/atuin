@@ -1,16 +1,20 @@
 import { AccessControl, Permission } from "role-acl";
+import { VM } from "vm2";
 import { worldBuiltins } from "./builtins";
 import { Actions, OID, WorldObject } from "./object";
 import { ProgramTypes } from "./program";
 import { WorldObjectProxyHandler } from "./proxy";
+import { Task, TID } from "./task";
 
 Error.stackTraceLimit = Infinity;
+
 export type ObjectProperty = string | number | null | OID;
 
 export class World {
   public objects: Map<OID, WorldObject> = new Map();
   private proxies: Map<OID, any> = new Map();
   public perms: AccessControl = new AccessControl();
+  private tasks: Map<TID, Task> = new Map();
   lastOid: OID = 0;
   builtins: any;
 
@@ -58,11 +62,7 @@ export class World {
     this.perms
       .grant(obj.credentials)
       // @ts-expect-error The type declaration is wrong
-      .execute([
-        String(Actions.read),
-        String(Actions.execute),
-        String(Actions.create),
-      ])
+      .execute([Actions.read, Actions.execute, Actions.create])
       .on(ProgramTypes.standard);
   }
 
@@ -92,5 +92,21 @@ export class World {
     }
 
     action.run(obj.programContext(args));
+  }
+
+  newTask(owner: WorldObject, vm: VM): Task {
+    const tid: TID = this.newTid();
+
+    const task = new Task(tid, owner, vm);
+    this.tasks.set(tid, task);
+    return task;
+  }
+
+  newTid(): TID {
+    const tid: TID = new Date().getTime() + Math.random();
+    if (this.tasks.get(tid)) {
+      return this.newTid();
+    }
+    return tid;
   }
 }

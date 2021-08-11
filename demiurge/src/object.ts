@@ -45,7 +45,6 @@ export class WorldObject {
       .execute(Actions.execute)
       .sync()
       .on(prog.type) as Permission;
-    console.log("Perms ", readPerms);
     if (!(readPerms.granted && executePerms.granted)) {
       throw new Error("Permission denied");
     }

@@ -9,6 +9,7 @@ obj.addProgram(
   "hello",
   [
     "print(`Hello, world from object ${obj.oid}!`)",
+    "print(`The current task ID is ${task.id}`",
     `const a = 1;
   if (a) {
   print('Assignment works!')
@@ -26,7 +27,9 @@ obj.addProgram(
   obj
 );
 
-obj.addProgram("verify", [`print('This program was called')`]);
+obj.addProgram("verify", [
+  "print(`This program was called. Current task ID: ${task.id}`)",
+]);
 
 const result = obj.run("hello");
 console.log("Program returned: ", result);
