@@ -1,10 +1,9 @@
 import { AccessControl, Permission } from "role-acl";
-import { VM } from "vm2";
 import { worldBuiltins } from "./builtins";
 import { Actions, OID, WorldObject } from "./object";
-import { ProgramTypes } from "./program";
+import { ExecutionContext, ProgramTypes } from "./program";
 import { WorldObjectProxyHandler } from "./proxy";
-import { Task, TID } from "./task";
+import { Task, TaskStatus, TID } from "./task";
 
 Error.stackTraceLimit = Infinity;
 
@@ -18,39 +17,33 @@ export class World {
   lastOid: OID = 0;
   builtins: any;
 
-  constructor() {
-    this.builtins = worldBuiltins(this);
-  }
+  constructor() {}
 
-  programContext() {
+  createProgramEnvironment(context: ExecutionContext) {
     return {
       world: this,
-      ...this.builtins,
-      ...this.objectRefs(),
+      ...worldBuiltins(this, context),
+      ...this.objectRefs(context),
     };
   }
 
-  objectRefs() {
+  objectRefs(context: ExecutionContext) {
     const keys = Array.from(this.objects.keys());
     return Object.fromEntries(
       keys
         .map((key) => {
           const obj = this.objects.get(key);
           if (!obj) return [];
-          const proxy = this.createProxy(obj);
+          const proxy = this.createProxy(obj, context);
           return ["o" + key, proxy];
         })
         .filter((o) => o.length)
     );
   }
 
-  createProxy(obj: WorldObject) {
+  createProxy(obj: WorldObject, context: ExecutionContext) {
     const oid = obj.oid as OID;
-    let proxy = this.proxies.get(oid);
-    if (!proxy) {
-      proxy = new Proxy(obj, WorldObjectProxyHandler);
-      this.proxies.set(oid, proxy);
-    }
+    const proxy = new Proxy(obj, new WorldObjectProxyHandler(context));
     return proxy;
   }
 
@@ -90,15 +83,31 @@ export class World {
     if (!canRunPerm.granted) {
       throw new Error("Access denied");
     }
-
-    action.run(obj.programContext(args));
+    // @ts-ignore
+    action.run(obj.createProgramEnvironment(args, context));
   }
 
-  newTask(owner: WorldObject, vm: VM): Task {
+  newTask(owner: WorldObject): Task {
     const tid: TID = this.newTid();
 
-    const task = new Task(tid, owner, vm);
+    const task = new Task(tid, owner);
     this.tasks.set(tid, task);
+    return task;
+  }
+
+  spawnTask(
+    caller: WorldObject,
+    obj: WorldObject,
+    program: string,
+    args: any = {}
+  ): Task {
+    const task = this.newTask(obj);
+    const context = new ExecutionContext(caller, task);
+    const objProxy = this.createProxy(obj, context);
+    context.obj = objProxy;
+    task.status = TaskStatus.running;
+    task.result = obj.run(program, context, args);
+    task.status = TaskStatus.finished;
     return task;
   }
 

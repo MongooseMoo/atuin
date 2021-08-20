@@ -1,5 +1,5 @@
 import { WorldObject } from "./object";
-import { ProgramTypes } from "./program";
+import { ExecutionContext, ProgramTypes } from "./program";
 import { World } from "./world";
 
 const world = new World();
@@ -9,12 +9,12 @@ obj.addProgram(
   "hello",
   [
     "print(`Hello, world from object ${obj.oid}!`)",
-    "print(`The current task ID is ${task.id}`",
+    "print(`Current task ID: ${taskId()}`",
     `const a = 1;
   if (a) {
   print('Assignment works!')
   }
-  obj.verify();
+  obj.second();
   print("Obj is o1: ", obj === o1);
   obj.programs = [];
   obj.test = 1;
@@ -27,9 +27,10 @@ obj.addProgram(
   obj
 );
 
-obj.addProgram("verify", [
-  "print(`This program was called. Current task ID: ${task.id}`)",
+obj.addProgram("second", [
+  "print(`Secondary program called.`)",
+  "print(`Current task ID in secondary program: ${taskId()}",
 ]);
 
-const result = obj.run("hello");
-console.log("Program returned: ", result);
+const result = world.spawnTask(obj, obj, "hello");
+console.log("task returned: ", result.result);

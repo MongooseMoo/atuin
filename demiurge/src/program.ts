@@ -7,10 +7,18 @@ export enum ProgramTypes {
   standard = "standard",
 }
 
-export interface ProgramContext {
-  task?: Task;
-  obj: ProxyHandler<WorldObject>;
+export interface ProgramEnvironment {
+  obj?: ProxyHandler<WorldObject>;
   args: any;
+}
+
+export class ExecutionContext {
+  public environment?: ProgramEnvironment;
+  constructor(
+    public caller: WorldObject,
+    public task: Task,
+    public obj?: WorldObject
+  ) {}
 }
 
 export class Program {
@@ -35,8 +43,8 @@ export class Program {
     this.compiled.compile();
   }
 
-  run(context: ProgramContext, task?: Task) {
-    const VM = this.createVM(context);
+  run(ENVIRONMENT: ProgramEnvironment) {
+    const VM = this.createVM(ENVIRONMENT);
     if (!this.compiled) {
       this.compile();
     }
@@ -44,22 +52,18 @@ export class Program {
       throw new Error("Failed to compile");
     }
 
-    if (!task) {
-      task = this.owner.world.newTask(this.owner, VM);
-    }
-    VM.freeze(task, "task");
     const result = VM.run(this.compiled);
 
     return result;
   }
 
-  createVM(context: ProgramContext) {
+  createVM(environment: ProgramEnvironment) {
     return new VM({
       eval: false,
       fixAsync: true,
       wasm: false,
       timeout: this.timeout,
-      sandbox: context,
+      sandbox: environment,
     });
   }
 }

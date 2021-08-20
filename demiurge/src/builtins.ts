@@ -1,6 +1,7 @@
+import { ExecutionContext } from "./program";
 import { World } from "./world";
 
-export function worldBuiltins(world: World) {
+export function worldBuiltins(world: World, context: ExecutionContext) {
   return {
     print: console.log,
 
@@ -11,6 +12,10 @@ export function worldBuiltins(world: World) {
       const obj = world.objects.get(oid);
       if (!obj) throw new Error("No such object " + oid);
       return obj;
+    },
+
+    taskId: function () {
+      return context.task.id;
     },
   };
 }

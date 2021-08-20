@@ -1,5 +1,11 @@
+import { env } from "process";
 import { Permission } from "role-acl";
-import { Program, ProgramContext, ProgramTypes } from "./program";
+import {
+  ExecutionContext,
+  Program,
+  ProgramEnvironment,
+  ProgramTypes,
+} from "./program";
 import { ObjectProperty, World } from "./world";
 
 export type OID = number;
@@ -27,20 +33,20 @@ export class WorldObject {
     return action;
   }
 
-  run(programName: string, args?: any, caller: WorldObject = this) {
+  run(programName: string, context: ExecutionContext, args?: any) {
     const prog = this.programs.get(programName);
     if (!prog) {
       throw new Error(`Program not found: ${programName}`);
     }
     const readPerms = this.world.perms
-      .can(caller.credentials)
+      .can(context.caller.credentials)
       // .context({ owner: prog.owner, caller: caller })
       .execute(Actions.read)
       .sync()
       .on(prog.type) as Permission;
 
     const executePerms = this.world.perms
-      .can(caller.credentials)
+      .can(context.caller.credentials)
       // .context({ owner: prog.owner, caller: caller })
       .execute(Actions.execute)
       .sync()
@@ -48,17 +54,25 @@ export class WorldObject {
     if (!(readPerms.granted && executePerms.granted)) {
       throw new Error("Permission denied");
     }
-    const context: ProgramContext = this.programContext(args);
-
-    return prog.run(context);
+    let environment;
+    if (context.environment) {
+      environment = context.environment;
+    } else {
+      environment = this.createProgramEnvironment(args, context);
+    }
+    return prog.run(environment);
   }
 
-  programContext(args: any): ProgramContext {
-    return {
-      obj: this.world.createProxy(this),
+  createProgramEnvironment(
+    args: any,
+    context: ExecutionContext
+  ): ProgramEnvironment {
+    const env = {
       args: args,
-      ...this.world.programContext(),
+      ...this.world.createProgramEnvironment(context),
     };
+    env.obj = env["o" + this.oid];
+    return env;
   }
 
   addProgram(
