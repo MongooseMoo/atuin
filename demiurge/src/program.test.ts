@@ -2,7 +2,7 @@ import { WorldObject } from "./object";
 import { Task } from "./task";
 import { World } from "./world";
 
-describe("Basic program checks", () => {
+    describe("Basic program checks", () => {
   test("Compilation works", () => {
     let world = new World();
     const obj = new WorldObject(world);
@@ -22,6 +22,8 @@ describe("Basic program checks", () => {
     expect(result.result).toBe(2);
   });
 
+test("Programs can call other programs with parameters", () => {});  
+    
   test("Programs can't alter important object attributes", () => {
     let world = new World();
     const obj = new WorldObject(world);

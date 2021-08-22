@@ -17,7 +17,7 @@ export class WorldObjectProxyHandler implements ProxyHandler<WorldObject> {
       return obj[prop];
     }
     return function () {
-      obj.run(prop, handler.context, arguments);
+      return obj.run(prop, handler.context, arguments);
     };
   }
 
