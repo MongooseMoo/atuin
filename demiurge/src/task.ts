@@ -1,13 +1,14 @@
-import { getParsedCommandLineOfConfigFile } from "typescript";
-import { VM } from "vm2";
 import { WorldObject } from "./object";
 
 export type TID = number;
+
+export class TaskKilled extends Error {}
 
 export enum TaskStatus {
   pending,
   running,
   finished,
+  killed,
 }
 
 export class Task {

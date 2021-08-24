@@ -13,7 +13,7 @@ export class World {
   public objects: Map<OID, WorldObject> = new Map();
   private proxies: Map<OID, any> = new Map();
   public perms: AccessControl = new AccessControl();
-  private tasks: Map<TID, Task> = new Map();
+  public tasks: Map<TID, Task> = new Map();
   lastOid: OID = 0;
   builtins: any;
 

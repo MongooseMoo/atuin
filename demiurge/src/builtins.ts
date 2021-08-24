@@ -1,4 +1,6 @@
+import { Actions } from "./object";
 import { ExecutionContext } from "./program";
+import { TaskKilled, TaskStatus, TID } from "./task";
 import { World } from "./world";
 
 export function worldBuiltins(world: World, context: ExecutionContext) {
@@ -16,6 +18,20 @@ export function worldBuiltins(world: World, context: ExecutionContext) {
 
     taskId: function () {
       return context.task.id;
+    },
+
+    killTask: function (taskId?: TID) {
+      if (!taskId) {
+        throw new TaskKilled("Task terminated");
+        taskId = context.task.id;
+      }
+      const toKil = world.tasks.get(taskId);
+      if (!toKil) throw new Error("No such task " + taskId);
+      const taskOwner = context.task.owner;
+      const Permission = world.perms
+        .can(taskOwner.credentials)
+        .execute(Actions.killTask);
+      toKil.status = TaskStatus.killed;
     },
   };
 }
