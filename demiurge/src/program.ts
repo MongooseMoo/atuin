@@ -29,18 +29,23 @@ export class Program {
   };
 
   constructor(
+    public name: string,
     public code: string[],
     public owner: WorldObject,
     public type: ProgramTypes = ProgramTypes.standard
-  ) {}
+  ) {
+    this.compileTypescript = this.compileTypescript.bind(this);
+  }
 
   compile() {
-    const compiled = ts.transpileModule(
-      this.code.join("\r\n"),
-      this.typescriptCompilerOptions
-    );
-    this.compiled = new VMScript(compiled.outputText);
+    this.compiled = new VMScript(this.code.join("\r\n"), this.name, {
+      compiler: this.compileTypescript,
+    });
     this.compiled.compile();
+  }
+
+  private compileTypescript(code: string, _filename: string) {
+    return ts.transpileModule(code, this.typescriptCompilerOptions).outputText;
   }
 
   run(ENVIRONMENT: ProgramEnvironment) {

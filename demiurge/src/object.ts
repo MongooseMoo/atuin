@@ -15,6 +15,7 @@ export enum Actions {
   delete = "delete",
   execute = "execute",
   read = "read",
+  killTask = "killTask",
 }
 
 export enum CredentialTypes {
@@ -81,7 +82,6 @@ export class WorldObject {
     programType: ProgramTypes = ProgramTypes.standard,
     owner: WorldObject = this
   ) {
-    console.log("current world perms ", this.world.perms.toJSON());
     const perm = this.world.perms
       .can(owner.credentials)
       .execute(Actions.create)
@@ -90,7 +90,8 @@ export class WorldObject {
     if (!perm.granted) {
       throw new Error("Access denied");
     }
-    const program = new Program(code, owner);
+    const program = new Program(name, code, owner);
+    program.compile();
     this.programs.set(name, program);
   }
 
