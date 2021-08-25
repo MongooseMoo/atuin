@@ -27,11 +27,12 @@ export class Program {
   private typescriptCompilerOptions = {
     compilerOptions: { module: ts.ModuleKind.CommonJS },
   };
+  description: any;
 
   constructor(
     public name: string,
     public code: string[],
-    public owner: WorldObject,
+    public owner?: WorldObject,
     public type: ProgramTypes = ProgramTypes.standard
   ) {
     this.compileTypescript = this.compileTypescript.bind(this);

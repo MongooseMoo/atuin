@@ -1,13 +1,21 @@
+import { parse } from "comment-parser";
 import { existsSync, promises as fs } from "fs";
 import { join } from "path";
 import { OID, WorldObject } from "./object";
 import { Program } from "./program";
 import { World } from "./world";
 
-export interface WorldObjectFileContents {
+const SCHEMA_VERSION = 1;
+
+export interface WorldMetadata {
+  name: string;
+  schemaVersion: number;
+}
+
+export interface WorldObjectMetadata {
   oid: OID;
-  properties: {};
-  programs: {};
+  owner: OID;
+  programs: string[];
 }
 
 export interface ProgramContents {
@@ -15,28 +23,41 @@ export interface ProgramContents {
   owner: OID;
 }
 
-export function serializeWorld(world: World, path: string) {
+export async function serializeWorld(world: World, path: string) {
+  const metadata: WorldMetadata = {
+    name: world.name,
+    schemaVersion: SCHEMA_VERSION,
+  };
   world.objects.forEach(async (obj: WorldObject, oid: OID) => {
-    const objectJson = serializeObj(obj);
-    const objectPath = join(path, `${oid}.json`);
-    await writeJsonFile(objectPath, objectJson);
+    const objectPath = join(path, oid.toString());
+    await writeObjToPath(obj, objectPath);
   });
 }
 
-export function serializeObj(obj: WorldObject): WorldObjectFileContents {
-  const properties = Object.fromEntries(obj.properties.entries());
-
-  const programs = Object.fromEntries(
-    Array.from(obj.programs.entries()).map(([name, prog]) => {
-      return [name, { code: prog.code, owner: prog.owner.oid as OID }];
-    })
-  );
-
-  return {
+export async function writeObjToPath(obj: WorldObject, path: string) {
+  const objMeta: WorldObjectMetadata = {
     oid: obj.oid as OID,
-    programs: programs,
-    properties: properties,
+    owner: obj.owner?.oid as OID,
+    programs: Array.from(obj.programs.keys()),
   };
+  await writeJsonFile(join(path, "object.json"), objMeta);
+  await writeJsonFile(join(path, "properties.json"), obj.properties);
+  for (const [name, program] of obj.programs.entries()) {
+    let serialized = serializeProgram(program);
+    const programPath = join(path, `${name}.ts`);
+    await fs.writeFile(programPath, serialized);
+  }
+}
+
+export function serializeProgram(program: Program) {
+  const code = program.code.join("\n");
+  const header = `
+  /**
+  * ${program.description}
+  *  @name: ${program.name}
+  * @author: ${program.owner?.oid}
+  `;
+  return header + code;
 }
 
 const WORLD_META_FILE = "world.json";
@@ -51,27 +72,39 @@ export async function loadWorld(path: string): Promise<World> {
   // const worldMeta = loadJsonFile(join(path, WORLD_META_FILE));
   const promises: any[] = [];
   worldFiles.forEach(async (fname) =>
-    promises.push(loadObjectFile(join(path, fname), world))
+    promises.push(loadObjectFromPath(join(path, fname), world))
   );
   await Promise.all(promises);
   return world;
 }
 
-async function loadObjectFile(fname: string, intoWorld: World) {
-  const json: WorldObjectFileContents = await loadJsonFile(fname);
-  const worldObj = new WorldObject(intoWorld, json.oid);
-  Object.keys(json.properties).forEach((propname) => {
-    // @ts-expect-error
-    worldObj.properties.set(propname, json.properties[propname]);
+async function loadObjectFromPath(path: string, intoWorld: World) {
+  const metadata = await loadJsonFile(join(path, "object.json"));
+  const properties = await loadJsonFile(join(path, "properties.json"));
+  const worldObj = new WorldObject(intoWorld, metadata.oid);
+  Object.keys(properties).forEach((propname) => {
+    worldObj.properties.set(propname, properties[propname]);
   });
-  Object.keys(json.programs).forEach((progname) => {
-    // @ts-expect-error
-    const prog = json.properties[propname];
-    const program = new Program(prog.code, prog.type, prog.owner);
+
+  metadata.programs.forEach(async (progname: string) => {
+    const programPath = join(path, `${progname}.ts`);
+
+    const programData = await fs.readFile(programPath);
+    const program = deserializeProgram(programData.toString());
     worldObj.programs.set(progname, program);
   });
 
   intoWorld.addWorldObject(worldObj);
+}
+
+function deserializeProgram(programData: string): Program {
+  const header = parse(programData)[0];
+  const tags = Object.fromEntries(header.tags.map((t) => [t.tag, t]));
+  const name = tags.name.name;
+  const authorOid = tags.owner.name;
+  const code = programData.slice(programData.indexOf("*/")).split("\n");
+  const program = new Program(name, code);
+  return program;
 }
 
 async function loadJsonFile(path: string) {

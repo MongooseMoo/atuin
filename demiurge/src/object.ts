@@ -27,7 +27,11 @@ export class WorldObject {
   properties: Map<string, ObjectProperty> = new Map();
   credentials: CredentialTypes[] = [CredentialTypes.user];
 
-  constructor(public world: World, public oid?: OID) {}
+  constructor(
+    public world: World,
+    public oid?: OID,
+    public owner?: WorldObject
+  ) {}
 
   lookupAction(actionName: string) {
     let action = this.programs.get(actionName);

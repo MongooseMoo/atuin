@@ -11,17 +11,14 @@ export type ObjectProperty = string | number | null | OID;
 
 export class World {
   public objects: Map<OID, WorldObject> = new Map();
-  private proxies: Map<OID, any> = new Map();
   public perms: AccessControl = new AccessControl();
   public tasks: Map<TID, Task> = new Map();
-  lastOid: OID = 0;
-  builtins: any;
+  private lastOid: OID = 0;
 
-  constructor() {}
+  constructor(public name: string = "Unnamed") {}
 
   createProgramEnvironment(context: ExecutionContext) {
     return {
-      world: this,
       ...worldBuiltins(this, context),
       ...this.objectRefs(context),
     };
@@ -42,7 +39,6 @@ export class World {
   }
 
   createProxy(obj: WorldObject, context: ExecutionContext) {
-    const oid = obj.oid as OID;
     const proxy = new Proxy(obj, new WorldObjectProxyHandler(context));
     return proxy;
   }
