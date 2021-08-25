@@ -1,4 +1,3 @@
-import { clear } from "console";
 import { AccessControl, Permission } from "role-acl";
 import { EventEmitter } from "stream";
 import { worldBuiltins } from "./builtins";
