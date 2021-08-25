@@ -28,7 +28,9 @@ export async function serializeWorld(world: World, path: string) {
     name: world.name,
     schemaVersion: SCHEMA_VERSION,
   };
-  world.objects.forEach(async (obj: WorldObject, oid: OID) => {
+  const metadataPath = join(path, "world.json");
+  await writeJsonFile(metadataPath, metadata);
+  await world.objects.forEach(async (obj: WorldObject, oid: OID) => {
     const objectPath = join(path, oid.toString());
     await writeObjToPath(obj, objectPath);
   });
@@ -86,7 +88,7 @@ async function loadObjectFromPath(path: string, intoWorld: World) {
     worldObj.properties.set(propname, properties[propname]);
   });
 
-  metadata.programs.forEach(async (progname: string) => {
+  await metadata.programs.forEach(async (progname: string) => {
     const programPath = join(path, `${progname}.ts`);
 
     const programData = await fs.readFile(programPath);

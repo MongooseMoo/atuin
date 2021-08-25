@@ -1,22 +1,25 @@
 import { existsSync } from "fs";
+import { mkdir } from "fs/promises";
 import { lock } from "proper-lockfile";
+import { WorldObject } from "./object";
+import { Program } from "./program";
 import { Repository } from "./repository";
 import { loadWorld, serializeWorld } from "./serialize";
-import { World } from "./world";
+import { Events, World } from "./world";
 
 class WorldStorageManager {
-  public world?: World;
-  private unlock?: () => void;
+  private _world?: World;
   private repository?: Repository;
-
+  private unlock?: () => void;
   private readonly lockfileName = "/world.lock";
 
   constructor(public basePath: string) {}
 
   async open() {
-    this.unlock = await lock(this.basePath + this.lockfileName, {
-      retries: 10,
-    });
+    if (!existsSync(this.basePath)) {
+      throw new Error("World" + this.basePath + " does not exist");
+    }
+    await this.lock();
     this.repository = new Repository(this.basePath);
     this.world = await loadWorld(this.basePath);
   }
@@ -29,13 +32,47 @@ class WorldStorageManager {
     await this.repository?.add(this.basePath);
     await this.repository?.commit(
       "Storage Manager",
-      "noone@example.com",
+      "noone@example.com", // Need dirty object set for authors
       message
     );
   }
 
   async close() {
     this.unlock && (await this.unlock());
+  }
+
+  get world(): World {
+    if (!this._world) {
+      throw new Error("No world");
+    }
+    return this._world;
+  }
+
+  set world(world: World) {
+    this._world = world;
+    world.on(
+      Events.objectCreated,
+      async (object: WorldObject) =>
+        await this.snapshotWorld(`Object ${object?.oid} created`)
+    );
+
+    world.on(
+      Events.objectDestroyed,
+      async (object: WorldObject) =>
+        await this.snapshotWorld(`Object ${object?.oid} deleted`)
+    );
+
+    world.on(
+      Events.programAdded,
+      async (program: Program) =>
+        await this.snapshotWorld(`Program ${program.name} added`)
+    );
+
+    world.on(
+      Events.programDeleted,
+      async (program: Program) =>
+        await this.snapshotWorld(`Program ${program.name} removed`)
+    );
   }
 
   public static async createEmptyWorldRepository(
@@ -45,8 +82,21 @@ class WorldStorageManager {
       throw new Error("Repository already exists");
     }
     const manager = new WorldStorageManager(path);
+    await mkdir(path, { recursive: true });
     manager.world = new World("unnamed");
+    manager.lock;
     await manager.repository?.initialize();
     return manager;
+  }
+
+  resetToSnapshot(hash: string) {
+    this.world.reset();
+    this.repository?.checkout(hash);
+  }
+
+  private async lock() {
+    this.unlock = await lock(this.basePath + this.lockfileName, {
+      retries: 5,
+    });
   }
 }

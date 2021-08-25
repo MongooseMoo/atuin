@@ -1,4 +1,4 @@
-import { promises } from "fs";
+import * as fs from "fs/promises";
 import git from "isomorphic-git";
 import node from "isomorphic-git/http/node";
 
@@ -7,7 +7,7 @@ export class Repository {
 
   clone(url: string) {
     return git.clone({
-      fs: promises,
+      fs,
       http: node,
       dir: this.path,
       url: url,
@@ -17,7 +17,7 @@ export class Repository {
 
   commit(authorName: string, authorEmail: string, message: string) {
     git.commit({
-      fs: promises,
+      fs,
       dir: this.path,
       message,
       author: {
@@ -28,12 +28,12 @@ export class Repository {
   }
 
   initialize() {
-    return git.init({ fs: promises, dir: this.path });
+    return git.init({ fs, dir: this.path });
   }
 
   push() {
     return git.push({
-      fs: promises,
+      fs,
       http: node,
       dir: this.path,
       ref: "refs/heads/master",
@@ -43,7 +43,7 @@ export class Repository {
 
   add(path: string) {
     git.add({
-      fs: promises,
+      fs,
       dir: this.path,
       filepath: path,
     });
@@ -51,9 +51,17 @@ export class Repository {
 
   remove(path: string) {
     git.remove({
-      fs: promises,
+      fs,
       dir: this.path,
       filepath: path,
+    });
+  }
+
+  checkout(ref: string) {
+    git.checkout({
+      fs,
+      dir: this.path,
+      ref: ref,
     });
   }
 }

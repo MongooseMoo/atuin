@@ -1,4 +1,6 @@
+import { clear } from "console";
 import { AccessControl, Permission } from "role-acl";
+import { EventEmitter } from "stream";
 import { worldBuiltins } from "./builtins";
 import { Actions, OID, WorldObject } from "./object";
 import { ExecutionContext, ProgramTypes } from "./program";
@@ -9,13 +11,22 @@ Error.stackTraceLimit = Infinity;
 
 export type ObjectProperty = string | number | null | OID;
 
-export class World {
+export enum Events {
+  objectCreated = "objectCreated",
+  objectDestroyed = "objectDestroyed",
+  programAdded = "programAdded",
+  programDeleted = "programDeleted",
+}
+
+export class World extends EventEmitter {
   public objects: Map<OID, WorldObject> = new Map();
   public perms: AccessControl = new AccessControl();
   public tasks: Map<TID, Task> = new Map();
   private lastOid: OID = 0;
 
-  constructor(public name: string = "Unnamed") {}
+  constructor(public name: string = "Unnamed") {
+    super();
+  }
 
   createProgramEnvironment(context: ExecutionContext) {
     return {
@@ -113,5 +124,12 @@ export class World {
       return this.newTid();
     }
     return tid;
+  }
+
+  reset() {
+    this.objects.clear();
+    this.tasks.clear();
+    this.lastOid = 0;
+    this.perms.reset();
   }
 }
