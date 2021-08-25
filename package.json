@@ -1,0 +1,27 @@
+{
+  "name": "atuin",
+  "version": "0.0.1",
+  "description": "The turtle which holds up the world",
+  "main": "index.js",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.28.5",
+    "@typescript-eslint/parser": "^4.28.5",
+    "eslint": "^7.31.0",
+    "eslint-config-prettier": "^8.3.0",
+    "prettier": "^2.3.2",
+    "typescript": "^4.3.5"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ctoth/atuin.git"
+  },
+  "author": "Christopher Toth",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/ctoth/atuin/issues"
+  },
+  "homepage": "https://github.com/ctoth/atuin#readme"
+}
