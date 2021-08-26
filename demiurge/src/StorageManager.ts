@@ -84,14 +84,15 @@ class WorldStorageManager {
     const manager = new WorldStorageManager(path);
     await mkdir(path, { recursive: true });
     manager.world = new World("unnamed");
-    manager.lock;
+    await manager.lock;
     await manager.repository?.initialize();
     return manager;
   }
 
-  resetToSnapshot(hash: string) {
+  async resetToSnapshot(hash: string) {
     this.world.reset();
-    this.repository?.checkout(hash);
+    await this.repository?.checkout(hash);
+    await loadWorld(this.basePath, this.world);
   }
 
   private async lock() {

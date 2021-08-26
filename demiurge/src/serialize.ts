@@ -64,17 +64,22 @@ export function serializeProgram(program: Program) {
 
 const WORLD_META_FILE = "world.json";
 
-export async function loadWorld(path: string): Promise<World> {
+export async function loadWorld(path: string, world?: World): Promise<World> {
   if (!existsSync(path)) {
     throw new Error("Invalid world path");
   }
-  const world = new World();
+  if (typeof world === "undefined") {
+    world = new World();
+  }
+  const metadataPath = join(path, WORLD_META_FILE);
   const worldFiles = new Set(await fs.readdir(path));
   worldFiles.delete(WORLD_META_FILE);
-  // const worldMeta = loadJsonFile(join(path, WORLD_META_FILE));
+  const worldMeta: WorldMetadata = await loadJsonFile(
+    join(path, WORLD_META_FILE)
+  );
   const promises: any[] = [];
   worldFiles.forEach(async (fname) =>
-    promises.push(loadObjectFromPath(join(path, fname), world))
+    promises.push(loadObjectFromPath(join(path, fname), world as World))
   );
   await Promise.all(promises);
   return world;
@@ -103,7 +108,7 @@ function deserializeProgram(programData: string): Program {
   const header = parse(programData)[0];
   const tags = Object.fromEntries(header.tags.map((t) => [t.tag, t]));
   const name = tags.name.name;
-  const authorOid = tags.owner.name;
+  const authorOid = tags.author.name;
   const code = programData.slice(programData.indexOf("*/")).split("\n");
   const program = new Program(name, code);
   return program;
