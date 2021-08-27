@@ -56,8 +56,11 @@ export function serializeProgram(program: Program) {
   const header = `
   /**
   * ${program.description}
+  * 
   *  @name: ${program.name}
   * @author: ${program.owner?.oid}
+  **/
+ 
   `;
   return header + code;
 }

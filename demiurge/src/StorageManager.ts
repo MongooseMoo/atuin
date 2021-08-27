@@ -4,7 +4,7 @@ import { lock } from "proper-lockfile";
 import { WorldObject } from "./object";
 import { Program } from "./program";
 import { Repository } from "./repository";
-import { loadWorld, serializeWorld } from "./serialize";
+import { loadWorld, serializeWorld, WorldMetadata } from "./serialize";
 import { Events, World } from "./world";
 
 class WorldStorageManager {
@@ -75,7 +75,7 @@ class WorldStorageManager {
     );
   }
 
-  public static async createEmptyWorldRepository(
+  static async createEmptyWorldRepository(
     path: string
   ): Promise<WorldStorageManager> {
     if (existsSync(path)) {
