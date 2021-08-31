@@ -1,0 +1,14 @@
+{
+  "name": "moo-db",
+  "version": "0.0.1",
+  "description": "Read Lambda/Toast MOO databases",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Christopher Toth",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^16.7.2"
+  }
+}
