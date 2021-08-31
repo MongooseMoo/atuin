@@ -211,12 +211,7 @@ export class MooDatabaseReader {
     const sep = verbLocation.indexOf(":");
     const objNumber = parseInt(verbLocation.slice(1, sep));
     const verbNumber = parseInt(verbLocation.slice(sep + 1));
-    const code = [];
-    let lastLine = this.readLine();
-    while (lastLine !== ".") {
-      code.push(lastLine);
-      lastLine = this.readLine();
-    }
+    const code = this.readCode();
     const obj = db.objects.get(objNumber);
     if (!obj) {
       this.parsingError(`object ${objNumber} not found`);
@@ -226,6 +221,15 @@ export class MooDatabaseReader {
       this.parsingError(`verb ${verbNumber} not found on object ${objNumber}`);
     }
     verb.code = code;
+  }
+  readCode() {
+    const code = [];
+    let lastLine = this.readLine();
+    while (lastLine !== ".") {
+      code.push(lastLine);
+      lastLine = this.readLine();
+    }
+    return code;
   }
 
   readClocks() {
@@ -269,6 +273,7 @@ export class MooDatabaseReader {
     const activation = this.readActivation();
     task.activation = activation;
     task.rtEnv = this.readRTEnv();
+    task.code = this.readCode();
     db.queuedTasks.push(task);
   }
 
