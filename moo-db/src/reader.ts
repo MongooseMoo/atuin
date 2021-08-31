@@ -22,20 +22,6 @@ const activationHeaderRe =
 export class MooDatabaseReader {
   constructor(public data: string, private pos: number = 0) {}
 
-  readUntil(text: string) {
-    const pos = this.data.indexOf(text, this.pos);
-    if (pos === -1) {
-      this.parsingError(`Could not find ${text}`);
-    }
-    const result = this.data.substring(this.pos, pos);
-    this.pos = pos + text.length;
-    return result;
-  }
-
-  readLine() {
-    return this.readUntil("\n");
-  }
-
   readInt() {
     return parseInt(this.readLine());
   }
@@ -174,10 +160,6 @@ export class MooDatabaseReader {
     }
   }
 
-  readDatabaseV17(db: MooDatabase) {
-    return db;
-  }
-
   readDatabaseV4(db: MooDatabase) {
     db.totalObjects = this.readInt();
     db.totalVerbs = this.readInt();
@@ -201,6 +183,10 @@ export class MooDatabaseReader {
     for (let i = 0; i < db.totalPlayers; i++) {
       db.players.push(this.readObjnum());
     }
+  }
+
+  readDatabaseV17(db: MooDatabase) {
+    return db;
   }
 
   readVerb(db: MooDatabase) {
@@ -246,6 +232,7 @@ export class MooDatabaseReader {
 
   readClock() {
     /* Not implemented for newer database versions */
+    this.readLine();
   }
 
   readTaskQueue(db: MooDatabase) {
@@ -319,5 +306,19 @@ export class MooDatabaseReader {
   parsingError(message: string): never {
     const lineno = this.data.slice(0, this.pos).split("\n").length;
     throw new Error(`Database parse error on line   ${lineno}: ${message}`);
+  }
+
+  readLine() {
+    return this.readUntil("\n");
+  }
+
+  readUntil(text: string) {
+    const pos = this.data.indexOf(text, this.pos);
+    if (pos === -1) {
+      this.parsingError(`Could not find ${text}`);
+    }
+    const result = this.data.substring(this.pos, pos);
+    this.pos = pos + text.length;
+    return result;
   }
 }
