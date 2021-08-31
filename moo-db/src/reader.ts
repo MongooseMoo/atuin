@@ -11,10 +11,11 @@ import { Property } from "./property";
 import { QueuedTask } from "./task";
 import { Verb } from "./verb";
 
-const versionRe = /\*\* LambdaMOO Database, Format Version (\d+) \*\*/;
-const varCountRe = /(\d+) variables/;
-const clockCountRe = /(\d+) clocks/;
-const taskCountRe = /(\d+) queued tasks/;
+const versionRe =
+  /\*\* LambdaMOO Database, Format Version (?<version>\d+) \*\*/;
+const varCountRe = /(?<count>\d+) variables/;
+const clockCountRe = /(?<count>\d+) clocks/;
+const taskCountRe = /(?<count>\d+) queued tasks/;
 const taskHeaderRe = /\d+ (\d+) (\d+) (\d+)/;
 const activationHeaderRe =
   /-?(\d+) -?\d+ -?\d+ -?(\d+) -?\d+ -?(\d+) -?(\d+) -?\d+ -?(\d+)/;
@@ -143,10 +144,10 @@ export class MooDatabaseReader {
     const db = new MooDatabase();
     const versionString = this.readLine();
     const versionMatch = versionRe.exec(versionString);
-    if (!versionMatch) {
+    if (!versionMatch || !versionMatch.groups) {
       throw new Error("Could not find version number");
     }
-    const dbVersion = parseInt(versionMatch[1]);
+    const dbVersion = parseInt(versionMatch.groups.version);
     db.versionString = versionString;
     db.version = dbVersion;
     if (dbVersion < 4) {
@@ -221,10 +222,10 @@ export class MooDatabaseReader {
   readClocks() {
     const clockLine = this.readLine();
     const clockMatch = clockCountRe.exec(clockLine);
-    if (!clockMatch) {
+    if (!clockMatch || !clockMatch.groups) {
       this.parsingError("Could not find clock definitions");
     }
-    const numClocks = parseInt(clockMatch[1]);
+    const numClocks = parseInt(clockMatch.groups.count);
     for (let i = 0; i < numClocks; i++) {
       this.readClock();
     }
@@ -238,10 +239,10 @@ export class MooDatabaseReader {
   readTaskQueue(db: MooDatabase) {
     const queuedTasksLine = this.readLine();
     const queuedTasksMatch = taskCountRe.exec(queuedTasksLine);
-    if (!queuedTasksMatch) {
+    if (!queuedTasksMatch || !queuedTasksMatch.groups) {
       this.parsingError("Could not find task queue");
     }
-    const numTasks = parseInt(queuedTasksMatch[1]);
+    const numTasks = parseInt(queuedTasksMatch.groups.count);
     for (let i = 0; i < numTasks; i++) {
       this.readQueuedTask(db);
     }
@@ -289,10 +290,10 @@ export class MooDatabaseReader {
   readRTEnv() {
     const varCountLine = this.readLine();
     const varCountMatch = varCountRe.exec(varCountLine);
-    if (!varCountMatch) {
+    if (!varCountMatch || !varCountMatch.groups) {
       this.parsingError("Could not find variable count for RT Env");
     }
-    const varCount = parseInt(varCountMatch[1]);
+    const varCount = parseInt(varCountMatch.groups.count);
     let rtEnv = {};
     for (let i = 0; i < varCount; i++) {
       const name = this.readLine();
