@@ -1,14 +1,23 @@
 /*** MOO Database reader
  * This provides the low-level methods for reading in a MOO database
  * Version 4 and Latest version databases are supported
+ 
  * */
 
+import { Activation } from "./activation";
 import { MooDatabase, MooObject, OID } from "./db";
 import { MooTypes } from "./mootypes";
 import { Property } from "./property";
+import { QueuedTask } from "./task";
 import { Verb } from "./verb";
 
 const versionRe = /\*\* LambdaMOO Database, Format Version (\d+) \*\*/;
+const varCountRe = /(\d+) variables/;
+const clockCountRe = /(\d+) clocks/;
+const taskCountRe = /(\d+) queued tasks/;
+const taskHeaderRe = /\d+ (\d+) (\d+) (\d+)/;
+const activationHeaderRe =
+  /-?(\d+) -?\d+ -?\d+ -?(\d+) -?\d+ -?(\d+) -?(\d+) -?\d+ -?(\d+)/;
 
 export class MooDatabaseReader {
   constructor(public data: string, private pos: number = 0) {}
@@ -25,15 +34,6 @@ export class MooDatabaseReader {
 
   readLine() {
     return this.readUntil("\n");
-  }
-
-  read(offset: number) {
-    if (this.pos + offset >= this.data.length) {
-      this.parsingError("read past end of file");
-    }
-    const result = this.data.substring(this.pos, this.pos + offset);
-    this.pos += offset;
-    return result;
   }
 
   readInt() {
@@ -64,7 +64,9 @@ export class MooDatabaseReader {
         return this.readErr();
       case MooTypes.LIST:
         return this.readList();
-      case MooTypes.CLEAR || MooTypes.NONE:
+      case MooTypes.CLEAR:
+        break;
+      case MooTypes.NONE:
         break;
       case MooTypes.MAP:
         return this.readMap();
@@ -180,11 +182,7 @@ export class MooDatabaseReader {
     db.totalObjects = this.readInt();
     db.totalVerbs = this.readInt();
     this.readLine();
-    db.totalPlayers = this.readInt();
-    for (let i = 0; i < db.totalPlayers; i++) {
-      db.players.push(this.readObjnum());
-    }
-
+    this.readPlayers(db);
     for (let i = 0; i < db.totalObjects; i++) {
       const obj = this.readObject();
       if (!obj) continue;
@@ -193,7 +191,16 @@ export class MooDatabaseReader {
     for (let i = 0; i < db.totalVerbs; i++) {
       this.readVerb(db);
     }
+    this.readClocks();
+    this.readTaskQueue(db);
     return db;
+  }
+
+  readPlayers(db: MooDatabase) {
+    db.totalPlayers = this.readInt();
+    for (let i = 0; i < db.totalPlayers; i++) {
+      db.players.push(this.readObjnum());
+    }
   }
 
   readVerb(db: MooDatabase) {
@@ -219,6 +226,89 @@ export class MooDatabaseReader {
       this.parsingError(`verb ${verbNumber} not found on object ${objNumber}`);
     }
     verb.code = code;
+  }
+
+  readClocks() {
+    const clockLine = this.readLine();
+    const clockMatch = clockCountRe.exec(clockLine);
+    if (!clockMatch) {
+      this.parsingError("Could not find clock definitions");
+    }
+    const numClocks = parseInt(clockMatch[1]);
+    for (let i = 0; i < numClocks; i++) {
+      this.readClock();
+    }
+  }
+
+  readClock() {
+    /* Not implemented for newer database versions */
+  }
+
+  readTaskQueue(db: MooDatabase) {
+    const queuedTasksLine = this.readLine();
+    const queuedTasksMatch = taskCountRe.exec(queuedTasksLine);
+    if (!queuedTasksMatch) {
+      this.parsingError("Could not find task queue");
+    }
+    const numTasks = parseInt(queuedTasksMatch[1]);
+    for (let i = 0; i < numTasks; i++) {
+      this.readQueuedTask(db);
+    }
+  }
+
+  readQueuedTask(db: MooDatabase) {
+    const headerLine = this.readLine();
+    const headerMatch = taskHeaderRe.exec(headerLine);
+    if (!headerMatch) {
+      this.parsingError("Could not find task header");
+    }
+    const firstLineno = parseInt(headerMatch[1]);
+    const st = parseInt(headerMatch[2]);
+    const id = parseInt(headerMatch[3]);
+    const task = new QueuedTask(firstLineno, id, st);
+    const activation = this.readActivation();
+    task.activation = activation;
+    task.rtEnv = this.readRTEnv();
+    db.queuedTasks.push(task);
+  }
+
+  readActivation(): Activation {
+    this.readValue();
+    const headerLine = this.readLine();
+    const headerMatch = activationHeaderRe.exec(headerLine);
+    if (!headerMatch || headerMatch.length !== 6) {
+      this.parsingError("Could not find activation header");
+    }
+    const activation = new Activation();
+    activation.this = parseInt(headerMatch[1]);
+    activation.player = parseInt(headerMatch[2]);
+    activation.programmer = parseInt(headerMatch[3]);
+    activation.vloc = parseInt(headerMatch[4]);
+    activation.debug = Boolean(parseInt(headerMatch[5]));
+    this.readString(); /* Was argstr*/
+    this.readString(); /* Was dobjstr*/
+    this.readString(); /* Was prepstr*/
+    this.readString(); /* Was iobjstr*/
+    activation.verb = this.readString();
+    activation.verbname = this.readString();
+    return activation;
+  }
+
+  readRTEnv() {
+    const varCountLine = this.readLine();
+    const varCountMatch = varCountRe.exec(varCountLine);
+    if (!varCountMatch) {
+      this.parsingError("Could not find variable count for RT Env");
+    }
+    const varCount = parseInt(varCountMatch[1]);
+    let rtEnv = {};
+    for (let i = 0; i < varCount; i++) {
+      const name = this.readLine();
+      const value = this.readValue();
+      // @ts-expect-error
+      rtEnv[name] = value;
+    }
+    return rtEnv;
   }
 
   parsingError(message: string): never {

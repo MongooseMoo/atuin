@@ -1,4 +1,5 @@
 import { Property } from "./property";
+import { QueuedTask } from "./task";
 import { Verb } from "./verb";
 
 export type OID = number;
@@ -12,8 +13,7 @@ export class MooObject {
     public location: OID,
     public parent: OID,
     public properties: Property[] = [],
-    public verbs: Verb[] = [],
-    public children: OID[] = []
+    public verbs: Verb[] = []
   ) {}
 }
 
@@ -25,6 +25,5 @@ export class MooDatabase {
   totalPlayers: number = 0;
   players: OID[] = [];
   objects: Map<OID, MooObject> = new Map();
-
-  constructor() {}
+  queuedTasks: QueuedTask[] = [];
 }
