@@ -25,5 +25,6 @@ export class MooDatabase {
   totalPlayers: number = 0;
   players: OID[] = [];
   objects: Map<OID, MooObject> = new Map();
+  anonObjects: MooObject[] = [];
   queuedTasks: QueuedTask[] = [];
 }

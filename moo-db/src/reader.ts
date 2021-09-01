@@ -46,6 +46,8 @@ export class MooDatabaseReader {
         return this.readString();
       case MooTypes.OBJ:
         return this.readObjnum();
+      case MooTypes.ANON:
+        return this.readAnon();
       case MooTypes.INT:
         return this.readInt();
       case MooTypes.FLOAT:
@@ -199,7 +201,7 @@ export class MooDatabaseReader {
       this.parsingError("verb does not have seperator");
     }
     const sep = verbLocation.indexOf(":");
-    const objNumber = parseInt(verbLocation.slice(1, sep));
+    const objNumber = parseInt(verbLocation.slice(1, sep)) as OID;
     const verbNumber = parseInt(verbLocation.slice(sep + 1));
     const code = this.readCode();
     const obj = db.objects.get(objNumber);
@@ -221,6 +223,10 @@ export class MooDatabaseReader {
       lastLine = this.readLine();
     }
     return code;
+  }
+
+  readAnon() {
+    return this.readObjnum();
   }
 
   readClocks() {
