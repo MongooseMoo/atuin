@@ -12,3 +12,8 @@ export enum MooTypes {
   WAIF = 13,
   BOOL,
 }
+
+export enum TaskType {
+  QUEUED = "queued",
+  SUSPENDED = "suspended",
+}
