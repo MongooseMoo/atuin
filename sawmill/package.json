@@ -1,0 +1,19 @@
+{
+  "name": "sawmill",
+  "version": "0.0.1",
+  "description": "Renders trees into useful shapes",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Christopher Toth",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "acorn": "^8.4.1",
+    "astring": "^1.7.5",
+    "estree-toolkit": "^1.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^16.7.10"
+  }
+}
