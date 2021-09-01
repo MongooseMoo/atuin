@@ -19,9 +19,12 @@ const taskCountRe = /(?<count>\d+) queued tasks/;
 const taskHeaderRe = /\d+ (\d+) (\d+) (\d+)/;
 const activationHeaderRe =
   /-?(\d+) -?\d+ -?\d+ -?(\d+) -?\d+ -?(\d+) -?(\d+) -?\d+ -?(\d+)/;
+const pendingValueRe = /(?<count>\d+) values pending finalization/;
+const suspendedTaskCountRe = /(?<count>\d+) suspended tasks/;
+const suspendedTaskHeaderRe = /(?<startTime>\d+) (?<id>\d+)(?<endchar>\n| )(?<value>|.+\n)/;
 
 export class MooDatabaseReader {
-  constructor(public data: string, private pos: number = 0) {}
+  constructor(public data: string, private pos: number = 0) { }
 
   readInt() {
     return parseInt(this.readLine());
@@ -209,6 +212,7 @@ export class MooDatabaseReader {
     }
     verb.code = code;
   }
+
   readCode() {
     const code = [];
     let lastLine = this.readLine();
@@ -307,6 +311,56 @@ export class MooDatabaseReader {
   parsingError(message: string): never {
     const lineno = this.data.slice(0, this.pos).split("\n").length;
     throw new Error(`Database parse error on line   ${lineno}: ${message}`);
+  }
+
+
+  readPending(db: MooDatabase) {
+    const valueLine = this.readLine()
+    const valueMatch = pendingValueRe.exec(valueLine)
+    if (!valueMatch || !valueMatch.groups) {
+      this.parsingError('Bad pending finalizations');
+    }
+    const finalizationCount = parseInt(valueMatch.groups.count)
+    for (let i = 0; i < finalizationCount; i++) {
+      this.readPendingValue(db);
+    }
+  }
+
+  //@ts-expect-error
+  readPendingValue(db: MooDatabase) {
+    return this.readValue();
+  }
+
+
+  readSuspendedTasks(db: MooDatabase) {
+    const valueLine = this.readLine()
+    const suspendedMatch = suspendedTaskCountRe.exec(valueLine);
+    if (!suspendedMatch || !suspendedMatch.groups) {
+      this.parsingError('Bad suspended tasks header')
+    }
+    const count = parseInt(suspendedMatch?.groups.count)
+    for (let i = 0; i < count; i++) {
+      const task = this.readSuspendedTask(db);
+    }
+  }
+
+  readSuspendedTask(db: MooDatabase) {
+    const headerLine = this.readLine();
+    const taskMatch = suspendedTaskHeaderRe.exec(headerLine);
+    if (!taskMatch || !taskMatch.groups) {
+      this.parsingError('Bad suspended task header')
+    }
+    const id = parseInt(taskMatch.groups.id);
+    const startTime = parseInt(taskMatch.groups.startTime);
+    const task = new QueuedTask(0, id, startTime); // Set line number to 0 for a suspended task since we don't know it (only opcodes, not text)
+    if (taskMatch.groups.value) {
+      task.value = this.readValue();
+    }
+    db.queuedTasks.push(task);
+  }
+
+  read_vm(db: MooDatabase, id: number) {
+
   }
 
   readLine() {
