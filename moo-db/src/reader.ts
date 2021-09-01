@@ -22,6 +22,7 @@ const activationHeaderRe =
 const pendingValueRe = /(?<count>\d+) values pending finalization/;
 const suspendedTaskCountRe = /(?<count>\d+) suspended tasks/;
 const suspendedTaskHeaderRe = /(?<startTime>\d+) (?<id>\d+)(?<endchar>\n| )(?<value>|.+\n)/;
+const vmHeaderRe = /(?<top>\d+) (?<vector>-?\d+) (?<funcId>\d+)(\n| (?<maxStackframes>\d))/;
 
 export class MooDatabaseReader {
   constructor(public data: string, private pos: number = 0) { }
