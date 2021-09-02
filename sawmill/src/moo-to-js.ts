@@ -4,9 +4,11 @@ import {
   ASTNode,
   Compare,
   Compound,
+  Dictionary,
   FunctionCall,
   If,
   IntermediateTypes,
+  List,
   MethodCall,
   Program,
   PropertyReference,
@@ -68,12 +70,17 @@ export class MooToJavascriptConverter {
         return this.convertComparison(node);
       case "unary_expression":
         return this.convertUnary(node);
+      case "map":
+        return this.convertMap(node);
+      case "list":
+        return this.convertList(node);
       default:
         throw new Error(
           `Unknown node type ${node.data} ${JSON.stringify(node.children)}`
         );
     }
   }
+
   convertPropRef(node: MooASTNode): ASTNode {
     const obj = this.convertNode(node.children[0]);
     const prop = this.convertNode(node.children[1]);
@@ -136,6 +143,23 @@ export class MooToJavascriptConverter {
     return block;
   }
 
+  convertMap(node: MooASTNode): ASTNode {
+    const entries: [ASTNode, ASTNode][] = node.children.map((child) => {
+      return [
+        this.convertNode(child.children[0]),
+        this.convertNode(child.children[1]),
+      ];
+    });
+    return new Dictionary(entries);
+  }
+
+  convertList(node: MooASTNode): ASTNode {
+    const entries: ASTNode[] = node.children.map((child) => {
+      return this.convertNode(child);
+    });
+    return new List(entries);
+  }
+
   parse() {
     return parseMoocode(this.moocode);
   }
@@ -150,6 +174,8 @@ export function test() {
     `player.location:announce("Holy crap!");`,
     `endif`,
     `endif`,
+    `b=["a" -> 5];`,
+    `c={1, 2, 10};`,
   ];
   const Transpiler = new MooToJavascriptConverter(code);
   const result = Transpiler.toJavascript();

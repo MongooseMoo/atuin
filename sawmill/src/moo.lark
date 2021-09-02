@@ -26,7 +26,7 @@ unary_expression: UNARY_OP expression
 
 list : "{" [expression ("," expression)*] "}"
 map : "[" [map_item ("," map_item)*] "]"
-map_item : (ESCAPED_STRING | SIGNED_INT | SIGNED_FLOAT | OBJ_NUM) "->" expression
+map_item : (ESCAPED_STRING | SIGNED_INT | SIGNED_FLOAT | OBJ_NUM | VAR) "->" expression
 OBJ_NUM: "#" SIGNED_INT
 
 prop_ref: (VAR | OBJ_NUM) "." (VAR | "(" ESCAPED_STRING ")")
@@ -61,7 +61,7 @@ for: "for" expression ["," VAR] "in" ("[" expression "]" | "(" expression ")") b
 while: "while" VAR? "(" expression ")" block "endwhile"
 fork: "fork" "(" expression ")" block "endfork"
 try: "try" block [except]* "endtry"
-except: "except" ("ANY" | VAR) ["," VAR] block
+except: "except" ("ANY" | VAR) ["," VAR]+ block
 
 compact_try: "`" expression "!" ("ANY" | expression) ["=>" expression] "'"
 ternary: expression "?" expression "|" expression

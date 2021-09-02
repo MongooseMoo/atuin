@@ -210,3 +210,26 @@ export class PropertyReference extends ASTNode {
     return builders.memberExpression(this.obj.toEstree(), this.prop.toEstree());
   }
 }
+
+export class List extends ASTNode {
+  constructor(public items: ASTNode[]) {
+    super();
+  }
+
+  toEstree() {
+    return builders.arrayExpression(this.items.map((item) => item.toEstree()));
+  }
+}
+
+export class Dictionary extends ASTNode {
+  constructor(public entries: [ASTNode, ASTNode][]) {
+    super();
+  }
+
+  toEstree() {
+    const entries = this.entries.map(([key, value]) =>
+      builders.property("init", key.toEstree(), value.toEstree())
+    );
+    return builders.objectExpression(entries);
+  }
+}
