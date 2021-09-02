@@ -1,4 +1,4 @@
-import { AssignmentOperator, BinaryOperator } from "estree";
+import { AssignmentOperator, BinaryOperator, UnaryOperator } from "estree";
 import { builders } from "estree-toolkit";
 
 export enum IntermediateTypes {
@@ -60,6 +60,18 @@ export class Assignment {
   }
 }
 
+export class Unary extends ASTNode {
+  constructor(public op: string, public rhs: ASTNode) {
+    super();
+  }
+  toEstree() {
+    return builders.unaryExpression(
+      this.op as UnaryOperator,
+      this.rhs.toEstree()
+    );
+  }
+}
+
 export class Binary extends ASTNode {
   constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
     super();
@@ -87,7 +99,9 @@ export class While extends ASTNode {
 }
 
 export class Program extends ASTNode {
-  body: ASTNode[] = [];
+  constructor(public body: ASTNode[] = []) {
+    super();
+  }
   toEstree() {
     return builders.program(this.body.map((node) => node.toEstree()));
   }
@@ -113,12 +127,12 @@ export class MethodCall extends ASTNode {
 }
 
 export class FunctionCall extends ASTNode {
-  constructor(public name: string, public args: ASTNode[]) {
+  constructor(public name: ASTNode, public args: ASTNode[]) {
     super();
   }
   toEstree() {
     return builders.callExpression(
-      builders.identifier(this.name),
+      this.name.toEstree(),
       this.args.map((arg) => arg.toEstree())
     );
   }
@@ -185,5 +199,14 @@ export class Variable extends ASTNode {
 
   toEstree() {
     return builders.identifier(this.name);
+  }
+}
+
+export class PropertyReference extends ASTNode {
+  constructor(public obj: ASTNode, public prop: ASTNode) {
+    super();
+  }
+  toEstree() {
+    return builders.memberExpression(this.obj.toEstree(), this.prop.toEstree());
   }
 }
