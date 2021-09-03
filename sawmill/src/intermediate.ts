@@ -29,12 +29,13 @@ export abstract class ASTNode {
 }
 
 export class Return extends ASTNode {
-  constructor(public value: Value) {
+  constructor(public value?: ASTNode) {
     super();
   }
 
   toEstree() {
-    return builders.returnStatement(this.value.toEstree());
+    const value = this.value ? this.value.toEstree() : undefined;
+    return builders.returnStatement(value);
   }
 }
 
@@ -72,7 +73,8 @@ export class Unary extends ASTNode {
   toEstree() {
     return builders.unaryExpression(
       this.op as UnaryOperator,
-      this.rhs.toEstree()
+      this.rhs.toEstree(),
+      true
     );
   }
 }
@@ -122,11 +124,9 @@ export class MethodCall extends ASTNode {
   }
 
   toEstree() {
-    return builders.expressionStatement(
-      builders.callExpression(
-        builders.memberExpression(this.obj.toEstree(), this.method.toEstree()),
-        this.args.map((arg) => arg.toEstree())
-      )
+    return builders.callExpression(
+      builders.memberExpression(this.obj.toEstree(), this.method.toEstree()),
+      this.args.map((arg) => arg.toEstree())
     );
   }
 }
@@ -135,6 +135,7 @@ export class FunctionCall extends ASTNode {
   constructor(public name: ASTNode, public args: ASTNode[]) {
     super();
   }
+
   toEstree() {
     return builders.callExpression(
       this.name.toEstree(),
@@ -189,8 +190,8 @@ export class Compare extends ASTNode {
   }
 
   toEstree() {
-    return builders.logicalExpression(
-      this.op as LogicalOperator,
+    return builders.binaryExpression(
+      this.op as BinaryOperator,
       this.lhs.toEstree(),
       this.rhs.toEstree()
     );
@@ -203,6 +204,9 @@ export class Variable extends ASTNode {
   }
 
   toEstree() {
+    if (this.name === "this") {
+      return builders.thisExpression();
+    }
     return builders.identifier(this.name);
   }
 }
@@ -253,6 +257,20 @@ export class Ternary {
         this.then.toEstree(),
         this.elseDo.toEstree()
       )
+    );
+  }
+}
+
+export class Subscript extends ASTNode {
+  constructor(public obj: ASTNode, public index: ASTNode) {
+    super();
+  }
+
+  toEstree() {
+    return builders.memberExpression(
+      this.obj.toEstree(),
+      this.index.toEstree(),
+      true
     );
   }
 }
