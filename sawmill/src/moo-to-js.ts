@@ -18,6 +18,7 @@ import {
   Return,
   Subscript,
   Ternary,
+  TryExpression,
   Unary,
   Value,
   Variable,
@@ -83,6 +84,8 @@ export class MooToJavascriptConverter {
           return this.convertVerbCall(node);
         case "function_call":
           return this.convertFunctionCall(node);
+        case "compact_try":
+          return this.convertCompactTry(node);
         case "prop_ref":
           return this.convertPropRef(node);
         case "comparison":
@@ -110,6 +113,22 @@ export class MooToJavascriptConverter {
       }
     }
   }
+
+  convertCompactTry(node: MooASTNode): ASTNode {
+    const hasErrorType = node.children.length === 3;
+    if (!hasErrorType) {
+      return new TryExpression(
+        this.convertNode(node.children[0]),
+        this.convertNode(node.children[1])
+      );
+    }
+    return new TryExpression(
+      this.convertNode(node.children[0]),
+      this.convertNode(node.children[1]),
+      this.convertNode(node.children[2])
+    );
+  }
+
   convertWhile(node: MooASTNode): ASTNode {
     const condition = this.convertNode(node.children[0]);
     const body = this.convertNode(node.children[1]);

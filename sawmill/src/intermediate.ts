@@ -1,9 +1,4 @@
-import {
-  AssignmentOperator,
-  BinaryOperator,
-  LogicalOperator,
-  UnaryOperator,
-} from "estree";
+import { BinaryOperator, LogicalOperator, UnaryOperator } from "estree";
 import { builders } from "estree-toolkit";
 
 export enum IntermediateTypes {
@@ -338,6 +333,35 @@ export class Subscript extends ASTNode {
       this.obj.toEstree(),
       this.index.toEstree(),
       true
+    );
+  }
+}
+
+export class TryExpression extends ASTNode {
+  constructor(
+    public expression: ASTNode,
+    public catchBlock: ASTNode,
+    public errorType?: ASTNode
+  ) {
+    super();
+    expression.parent = this;
+    catchBlock.parent = this;
+    errorType && (errorType.parent = this);
+  }
+
+  toEstree() {
+    return builders.callExpression(
+      builders.arrowFunctionExpression(
+        [],
+        builders.blockStatement([
+          builders.tryStatement(
+            this.expression.toEstree(), // try
+            builders.catchClause(null, this.catchBlock.toEstree()),
+            null // finalizer
+          ),
+        ])
+      ),
+      []
     );
   }
 }
