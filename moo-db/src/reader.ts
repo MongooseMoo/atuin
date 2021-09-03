@@ -366,8 +366,25 @@ export class MooDatabaseReader {
     db.queuedTasks.push(task);
   }
 
-  read_vm(db: MooDatabase, id: number) {
-
+  readVm(db: MooDatabase, task: QueuedTask) {
+    if (db.version == 17) {
+      task.local = this.readValue(); // read and save task local data
+    }
+    const headerLine = this.readLine();
+    const vmHeader = vmHeaderRe.exec(headerLine);
+    if (!vmHeader || !vmHeader.groups) {
+      this.parsingError('Bad VM header line');
+    }
+    const top = parseInt(vmHeader.groups.top);
+    const vector = parseInt(vmHeader.groups.vector);
+    const funcId = parseInt(vmHeader.groups.funcId);
+    task.vmData = { top, vector, funcId };
+    if (vmHeader.groups.maxStackframes) {
+      task.vmData['maxStackframes'] = parseInt(vmHeader.groups.maxStackframes);
+    }
+    for (let i = 0; i < top; i++) {
+      task.vmData.activationStack?.push(this.readActivation());
+    }
   }
 
   readLine() {
