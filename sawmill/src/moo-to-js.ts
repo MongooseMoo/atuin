@@ -10,6 +10,7 @@ import {
   If,
   IntermediateTypes,
   List,
+  Logical,
   MethodCall,
   Program,
   PropertyReference,
@@ -31,6 +32,10 @@ export class MooToJavascriptConverter {
     "!=": "!==",
   };
 
+  nameMap: any = {
+    typeof: "type_of",
+  };
+
   constructor(public moocode: string[]) {}
 
   toJavascript() {
@@ -46,7 +51,7 @@ export class MooToJavascriptConverter {
     if (node.type) {
       switch (node.type) {
         case "VAR":
-          return new Variable(node.value!);
+          return this.convertVariable(node);
         case "SIGNED_INT":
           return new Value(IntermediateTypes.int, parseInt(node.value!));
         case "SIGNED_FLOAT":
@@ -78,6 +83,8 @@ export class MooToJavascriptConverter {
           return this.convertUnary(node);
         case "binary_expression":
           return this.convertBinary(node);
+        case "logical_expression":
+          return this.convertLogical(node);
         case "map":
           return this.convertMap(node);
         case "list":
@@ -94,6 +101,12 @@ export class MooToJavascriptConverter {
           );
       }
     }
+  }
+
+  convertVariable(node: MooASTNode): ASTNode {
+    const name = node.value!;
+    const validName = this.nameMap[name] || name;
+    return new Variable(validName);
   }
 
   convertPropRef(node: MooASTNode): ASTNode {
@@ -114,6 +127,14 @@ export class MooToJavascriptConverter {
     const right = this.convertNode(node.children[2]);
     return new Binary(left, operator.value!, right);
   }
+
+  convertLogical(node: MooASTNode): ASTNode {
+    const left = this.convertNode(node.children[0]);
+    const operator = node.children[1].children[0];
+    const right = this.convertNode(node.children[2]);
+    return new Logical(left, operator.value!, right);
+  }
+
   convertFunctionCall(node: MooASTNode): ASTNode {
     const name = this.convertNode(node.children[0]);
     const args = node.children[1].children.map((child) =>

@@ -93,6 +93,20 @@ export class Binary extends ASTNode {
   }
 }
 
+export class Logical extends ASTNode {
+  constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
+    super();
+  }
+
+  toEstree() {
+    return builders.logicalExpression(
+      this.op as LogicalOperator,
+      this.lhs.toEstree(),
+      this.rhs.toEstree()
+    );
+  }
+}
+
 export class While extends ASTNode {
   constructor(public condition: ASTNode, public body: ASTNode) {
     super();
