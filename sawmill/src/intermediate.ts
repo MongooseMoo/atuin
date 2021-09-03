@@ -25,12 +25,16 @@ export class Value {
 }
 
 export abstract class ASTNode {
+  parent?: ASTNode | null = null;
   abstract toEstree(): any;
 }
 
 export class Return extends ASTNode {
   constructor(public value?: ASTNode) {
     super();
+    if (value) {
+      value.parent = this;
+    }
   }
 
   toEstree() {
@@ -46,6 +50,11 @@ export class If extends ASTNode {
     public elseDo?: ASTNode
   ) {
     super();
+    condition.parent = this;
+    then.parent = this;
+    if (elseDo) {
+      elseDo.parent = this;
+    }
   }
 
   toEstree() {
@@ -58,7 +67,11 @@ export class If extends ASTNode {
 }
 
 export class Assignment {
-  constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {}
+  constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
+    lhs.parent = this;
+    rhs.parent = this;
+  }
+
   toEstree() {
     return builders.variableDeclaration("let", [
       builders.variableDeclarator(this.lhs.toEstree(), this.rhs.toEstree()),
@@ -69,7 +82,9 @@ export class Assignment {
 export class Unary extends ASTNode {
   constructor(public op: string, public rhs: ASTNode) {
     super();
+    rhs.parent = this;
   }
+
   toEstree() {
     return builders.unaryExpression(
       this.op as UnaryOperator,
@@ -82,6 +97,8 @@ export class Unary extends ASTNode {
 export class Binary extends ASTNode {
   constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
     super();
+    lhs.parent = this;
+    rhs.parent = this;
   }
 
   toEstree() {
@@ -96,6 +113,8 @@ export class Binary extends ASTNode {
 export class Logical extends ASTNode {
   constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
     super();
+    lhs.parent = this;
+    rhs.parent = this;
   }
 
   toEstree() {
@@ -110,7 +129,10 @@ export class Logical extends ASTNode {
 export class WhileLoop extends ASTNode {
   constructor(public condition: ASTNode, public body: ASTNode) {
     super();
+    condition.parent = this;
+    body.parent = this;
   }
+
   toEstree() {
     return builders.whileStatement(
       this.condition.toEstree(),
@@ -122,7 +144,9 @@ export class WhileLoop extends ASTNode {
 export class Program extends ASTNode {
   constructor(public body: ASTNode[] = []) {
     super();
+    body.map((node) => (node.parent = this));
   }
+
   toEstree() {
     return builders.program(this.body.map((node) => node.toEstree()));
   }
@@ -135,6 +159,9 @@ export class MethodCall extends ASTNode {
     public args: ASTNode[]
   ) {
     super();
+    obj.parent = this;
+    method.parent = this;
+    args.map((arg) => (arg.parent = this));
   }
 
   toEstree() {
@@ -148,6 +175,8 @@ export class MethodCall extends ASTNode {
 export class FunctionCall extends ASTNode {
   constructor(public name: ASTNode, public args: ASTNode[]) {
     super();
+    name.parent = this;
+    args.map((arg) => (arg.parent = this));
   }
 
   toEstree() {
@@ -161,7 +190,10 @@ export class FunctionCall extends ASTNode {
 export class TryCatch extends ASTNode {
   constructor(public tryBlock: ASTNode, public catchBlock: ASTNode) {
     super();
+    tryBlock.parent = this;
+    catchBlock.parent = this;
   }
+
   toEstree() {
     return builders.tryStatement(
       this.tryBlock.toEstree(),
@@ -177,6 +209,9 @@ export class ForInLoop extends ASTNode {
     public body: ASTNode
   ) {
     super();
+    variable.parent = this;
+    collection.parent = this;
+    body.parent = this;
   }
 
   toEstree() {
@@ -191,6 +226,7 @@ export class ForInLoop extends ASTNode {
 export class Compound extends ASTNode {
   constructor(public body: ASTNode[] = []) {
     super();
+    body.map((node) => (node.parent = this));
   }
 
   toEstree() {
@@ -201,6 +237,8 @@ export class Compound extends ASTNode {
 export class Compare extends ASTNode {
   constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
     super();
+    lhs.parent = this;
+    rhs.parent = this;
   }
 
   toEstree() {
@@ -228,7 +266,10 @@ export class Variable extends ASTNode {
 export class PropertyReference extends ASTNode {
   constructor(public obj: ASTNode, public prop: ASTNode) {
     super();
+    obj.parent = this;
+    prop.parent = this;
   }
+
   toEstree() {
     return builders.memberExpression(this.obj.toEstree(), this.prop.toEstree());
   }
@@ -237,6 +278,7 @@ export class PropertyReference extends ASTNode {
 export class List extends ASTNode {
   constructor(public items: ASTNode[]) {
     super();
+    items.map((item) => (item.parent = this));
   }
 
   toEstree() {
@@ -247,6 +289,10 @@ export class List extends ASTNode {
 export class Dictionary extends ASTNode {
   constructor(public entries: [ASTNode, ASTNode][]) {
     super();
+    entries.map(([key, value]) => {
+      key.parent = this;
+      value.parent = this;
+    });
   }
 
   toEstree() {
@@ -257,12 +303,17 @@ export class Dictionary extends ASTNode {
   }
 }
 
-export class Ternary {
+export class Ternary extends ASTNode {
   constructor(
     public condition: ASTNode,
     public then: ASTNode,
     public elseDo: ASTNode
-  ) {}
+  ) {
+    super();
+    condition.parent = this;
+    then.parent = this;
+    elseDo.parent = this;
+  }
 
   toEstree() {
     return builders.expressionStatement(
@@ -278,6 +329,8 @@ export class Ternary {
 export class Subscript extends ASTNode {
   constructor(public obj: ASTNode, public index: ASTNode) {
     super();
+    obj.parent = this;
+    index.parent = this;
   }
 
   toEstree() {
