@@ -1,4 +1,9 @@
-import { AssignmentOperator, BinaryOperator, UnaryOperator } from "estree";
+import {
+  AssignmentOperator,
+  BinaryOperator,
+  LogicalOperator,
+  UnaryOperator,
+} from "estree";
 import { builders } from "estree-toolkit";
 
 export enum IntermediateTypes {
@@ -184,8 +189,8 @@ export class Compare extends ASTNode {
   }
 
   toEstree() {
-    return builders.binaryExpression(
-      this.op as BinaryOperator,
+    return builders.logicalExpression(
+      this.op as LogicalOperator,
       this.lhs.toEstree(),
       this.rhs.toEstree()
     );
@@ -231,5 +236,23 @@ export class Dictionary extends ASTNode {
       builders.property("init", key.toEstree(), value.toEstree())
     );
     return builders.objectExpression(entries);
+  }
+}
+
+export class Ternary {
+  constructor(
+    public condition: ASTNode,
+    public then: ASTNode,
+    public elseDo: ASTNode
+  ) {}
+
+  toEstree() {
+    return builders.expressionStatement(
+      builders.conditionalExpression(
+        this.condition.toEstree(),
+        this.then.toEstree(),
+        this.elseDo.toEstree()
+      )
+    );
   }
 }

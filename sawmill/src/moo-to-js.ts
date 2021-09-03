@@ -12,6 +12,7 @@ import {
   MethodCall,
   Program,
   PropertyReference,
+  Ternary,
   Unary,
   Value,
   Variable,
@@ -39,45 +40,48 @@ export class MooToJavascriptConverter {
   }
 
   convertNode(node: MooASTNode): ASTNode {
-    switch (node.type) {
-      case "VAR":
-        return new Variable(node.value!);
-      case "SIGNED_INT":
-        return new Value(IntermediateTypes.int, parseInt(node.value!));
-      case "ESCAPED_STRING":
-        return new Value(IntermediateTypes.string, node.value!);
-    }
-    switch (node.data) {
-      case "start":
-        return this.convertStart(node);
-      case "block":
-        return this.convertBlock(node);
-      case "if":
-        return this.convertIf(node);
-      case "assignment":
-        return this.convertAssignment(node);
-      case "verb_call":
-        return this.convertVerbCall(node);
-      case "function_call":
-        return this.convertFunctionCall(node);
-      case "prop_ref":
-        return this.convertPropRef(node);
-      case "statement":
-        return this.convertNode(node.children[0]);
-      case "expression":
-        return this.convertNode(node.children[0]);
-      case "comparison":
-        return this.convertComparison(node);
-      case "unary_expression":
-        return this.convertUnary(node);
-      case "map":
-        return this.convertMap(node);
-      case "list":
-        return this.convertList(node);
-      default:
-        throw new Error(
-          `Unknown node type ${node.data} ${JSON.stringify(node.children)}`
-        );
+    if (node.type) {
+      switch (node.type) {
+        case "VAR":
+          return new Variable(node.value!);
+        case "SIGNED_INT":
+          return new Value(IntermediateTypes.int, parseInt(node.value!));
+        case "ESCAPED_STRING":
+          return new Value(IntermediateTypes.string, node.value!);
+        default:
+          throw new Error(`Unknown node type: ${node.type}`);
+      }
+    } else {
+      switch (node.data) {
+        case "start":
+          return this.convertStart(node);
+        case "block":
+          return this.convertBlock(node);
+        case "if":
+          return this.convertIf(node);
+        case "assignment":
+          return this.convertAssignment(node);
+        case "verb_call":
+          return this.convertVerbCall(node);
+        case "function_call":
+          return this.convertFunctionCall(node);
+        case "prop_ref":
+          return this.convertPropRef(node);
+        case "comparison":
+          return this.convertComparison(node);
+        case "unary_expression":
+          return this.convertUnary(node);
+        case "map":
+          return this.convertMap(node);
+        case "list":
+          return this.convertList(node);
+        case "ternary":
+          return this.convertTernary(node);
+        default:
+          throw new Error(
+            `Unknown node type ${node.data} ${JSON.stringify(node.children)}`
+          );
+      }
     }
   }
 
@@ -101,7 +105,9 @@ export class MooToJavascriptConverter {
   }
 
   convertStart(node: MooASTNode): ASTNode {
-    return new Program(node.children.map((child) => this.convertNode(child)));
+    return new Program(
+      node.children[0].children.map((child) => this.convertNode(child))
+    );
   }
 
   convertComparison(node: MooASTNode): ASTNode {
@@ -160,26 +166,40 @@ export class MooToJavascriptConverter {
     return new List(entries);
   }
 
+  convertTernary(node: MooASTNode): ASTNode {
+    const condition = this.convertNode(node.children[0]);
+    const consequent = this.convertNode(node.children[1]);
+    const alternate = this.convertNode(node.children[2]);
+    console.log(condition, consequent, alternate);
+    return new Ternary(condition, consequent, alternate);
+  }
   parse() {
     return parseMoocode(this.moocode);
   }
 }
 
 export function test() {
-  const code = [
-    `x = 1;`,
-    `if (x==1)`,
-    `player:tell("Test successful!");`,
-    `if (!valid(dobj))`,
-    `player.location:announce("Holy crap!");`,
-    `endif`,
-    `endif`,
-    `b=["a" -> 5];`,
-    `c={1, 2, 10};`,
-  ];
-  const Transpiler = new MooToJavascriptConverter(code);
-  const result = Transpiler.toJavascript();
-  console.log(result);
+  const code = `id = this:get_free_entry();
+  if (id == 0)
+  return 0;
+  endif
+  if (((!(player in connected_players())) || (!$object_utils:has_property(player, "name"))) || (typeof(player.name) != STR))
+  return -2;
+  endif
+  connection = this:net_open(this.irc_server, this.irc_server_port);
+  if (typeof(connection) == ERR)
+  return -1;
+  endif
+  this:log_use(caller, start_time = time());
+  this:net_notify(connection, ((((((((((("USER " + this.irc_user) + " ") + $network.site) + " ") + this.irc_server) + " :") + this.irc_realname) + " for ") + tostr(player)) + " (") + player.name) + ")");
+  nick = (length(player.name) > 8) ? player.name[1..8] | player.name;
+  this:net_notify(connection, "NICK " + nick);
+  this:net_notify(connection, ("MODE " + nick) + " :-i");
+  `;
+  const Transpiler = new MooToJavascriptConverter([code]);
+  const result = Transpiler.toIntermediate();
+  console.dir(result, { depth: null, maxArrayLength: null });
+  //console.log(result);
 }
 
 test();
