@@ -4,6 +4,7 @@
   "description": "Renders trees into useful shapes",
   "main": "index.js",
   "scripts": {
+    "generate:parser": "lark-js src/moo.lark -o src/mooparser.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Christopher Toth",

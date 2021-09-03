@@ -17,6 +17,7 @@ rl.on("line", (line) => {
   const command = line.trim();
   if (command === "exit") {
     rl.close();
+    return;
   } else if (command === "help") {
     console.log("Commands: exit, help, javascript, moo");
     return rl.prompt();
@@ -28,7 +29,7 @@ rl.on("line", (line) => {
     return rl.prompt();
   }
   try {
-    displayTree(decompile(line));
+    displayTree(decompiler(line));
   } catch (e) {
     console.error(e);
   }
