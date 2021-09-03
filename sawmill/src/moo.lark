@@ -1,4 +1,3 @@
-
 ?value: map
   | list
   | ESCAPED_STRING
@@ -6,52 +5,52 @@
   | SIGNED_FLOAT
   | OBJ_NUM
 
-expression: value
+?expression: value
   | assignment
   | verb_call
   | function_call
   | subscript
-  | slice
   | ternary
   | compact_try
   | prop_ref
-  | VAR
-  | bin_expr
+  | binary_expression
   | comparison
-  | multi_comparison
   | "(" expression ")"
   |  unary_expression
-
-unary_expression: UNARY_OP expression
+  | VAR
 
 list : "{" [expression ("," expression)*] "}"
 map : "[" [map_item ("," map_item)*] "]"
-map_item : (ESCAPED_STRING | SIGNED_INT | SIGNED_FLOAT | OBJ_NUM | VAR) "->" expression
-OBJ_NUM: "#" SIGNED_INT
+map_item : expression "->" expression
 
-prop_ref: (VAR | OBJ_NUM) "." (VAR | "(" ESCAPED_STRING ")")
-VAR: (("_"|"$"|LETTER) ("_"|LETTER|DIGIT)*)
+OBJ_NUM: "#" SIGNED_INT
+prop_ref: expression "." expression
+
+IN: "in"
+VAR.-5: (("_"|"$"|LETTER) ("_"|LETTER|DIGIT)*)
 arg_list : "(" [expression ("," expression)*] ")"
 function_call: VAR arg_list
 verb_call: expression ":" (VAR | "(" ESCAPED_STRING ")") arg_list
-flow_statement: break | continue | return
+?flow_statement: break | continue | return
 break: "break" [VAR]
 continue: "continue" [VAR]
 return: "return" [expression]
-BINARY_OP: ("+" | "-" | "*" | "/" | "^" | "%" | "|" )
-UNARY_OP: ("!" | "~")
-COMP_OP: "==" | ">=" | "<=" | "!=" | "in" | "<" | ">"
-MULTI_COMP_OP: "&&" | "||"
+?statement: (scatter_assignment | expression | flow_statement )? ";"
+!binary_op: ("+" | "-" | "*" | "/" | "^" | "%" | "&&" | "||")
+!comp_op: (IN | "==" | ">=" | "<=" | "!=" | "<" | ">" )
+!unary_op: ("!" | "~")
+
 assignment: (VAR | prop_ref | subscript) "=" expression
 default_val: "?" VAR "=" expression
 scatter_names: "{" [(VAR | default_val) ("," (VAR | default_val))*] "}"
 scatter_assignment: scatter_names "=" expression
-bin_expr: expression BINARY_OP expression
-subscript: expression "[" expression "]"
-slice: expression ".." expression
-statement: (scatter_assignment | expression | flow_statement )? ";"
-comparison: expression (COMP_OP expression)+
-multi_comparison: expression (MULTI_COMP_OP expression)+
+binary_expression: (expression binary_op expression)
+unary_expression: unary_op expression
+subscript: expression "[" ( slice | expression ) "]"
+!slice_op: ".."
+slice: (expression slice_op expression)
+
+comparison: expression (comp_op expression)+
 
 if: "if" "(" expression ")" block elseif* else? "endif"
 elseif: "elseif" "(" expression ")" block
@@ -64,10 +63,11 @@ try: "try" block [except]* "endtry"
 except: "except" ("ANY" | VAR) ["," VAR] block
 
 compact_try: "`" expression "!" ("ANY" | expression) ["=>" expression] "'"
-ternary: expression "?" expression "|" expression
+ternary: (expression "?" expression "|" expression)
 
-block: (statement | if | for | while | try)*
+block: (statement | if | for | while | try | fork)*
 start: block
+
 
 %import common.ESCAPED_STRING
 %import common.SIGNED_INT
