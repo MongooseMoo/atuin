@@ -6,6 +6,7 @@ import {
   Compare,
   Compound,
   Dictionary,
+  ForInLoop,
   FunctionCall,
   If,
   IntermediateTypes,
@@ -20,8 +21,8 @@ import {
   Unary,
   Value,
   Variable,
+  WhileLoop,
 } from "./intermediate";
-
 import { MooASTNode, parseMoocode } from "./parser";
 
 export class MooToJavascriptConverter {
@@ -39,7 +40,10 @@ export class MooToJavascriptConverter {
   constructor(public moocode: string[]) {}
 
   toJavascript() {
-    return generate(this.toIntermediate().toEstree());
+    return generate(this.toIntermediate().toEstree(), {
+      sourceMap: true,
+      comments: true,
+    });
   }
 
   toIntermediate(): ASTNode {
@@ -69,6 +73,10 @@ export class MooToJavascriptConverter {
           return this.convertBlock(node);
         case "if":
           return this.convertIf(node);
+        case "for":
+          return this.convertForIn(node);
+        case "while":
+          return this.convertWhile(node);
         case "assignment":
           return this.convertAssignment(node);
         case "verb_call":
@@ -101,6 +109,11 @@ export class MooToJavascriptConverter {
           );
       }
     }
+  }
+  convertWhile(node: MooASTNode): ASTNode {
+    const condition = this.convertNode(node.children[0]);
+    const body = this.convertNode(node.children[1]);
+    return new WhileLoop(condition, body);
   }
 
   convertVariable(node: MooASTNode): ASTNode {
@@ -163,11 +176,17 @@ export class MooToJavascriptConverter {
     const consequent = this.convertNode(node.children[1]);
     let alternate: ASTNode | undefined;
     if (node.children.length === 3) {
-      alternate = this.convertNode(node.children[2]);
+      alternate = this.convertNode(node.children[2].children[0]);
     }
     return new If(condition, consequent);
   }
 
+  convertForIn(node: MooASTNode): ASTNode {
+    const variable = this.convertNode(node.children[0]);
+    const list = this.convertNode(node.children[1]);
+    const body = this.convertNode(node.children[2]);
+    return new ForInLoop(variable, list, body);
+  }
   convertAssignment(node: MooASTNode) {
     const left = this.convertNode(node.children[0]);
     const right = this.convertNode(node.children[1]);
@@ -230,23 +249,26 @@ export class MooToJavascriptConverter {
 }
 
 export function test() {
-  const code = `id = this:get_free_entry();
-  if (id == 0)
-  return 0;
+  const code = `"'find_verb (<name>)' - Search for a verb with the given name. The objects searched are those returned by this:find_verbs_on(). The printing order relies on $list_utils:remove_duplicates to leave the *first* copy of each duplicated element in a list; for example, {1, 2, 1} -> {1, 2}, not to {2, 1}.";
+  name = args[1];
+  results = "";
+  objects = $list_utils:remove_duplicates(this:find_verbs_on());
+  for thing in (objects)
+  if (valid(thing) && (mom = $object_utils:has_verb(thing, name)))
+  results = ((((results + "   ") + thing.name) + "(") + tostr(thing)) + ")";
+  mom = mom[1];
+  if (thing != mom)
+  results = ((((results + "--") + mom.name) + "(") + tostr(mom)) + ")";
   endif
-  if (((!(player in connected_players())) || (!$object_utils:has_property(player, "name"))) || (typeof(player.name) != STR))
-  return -2;
   endif
-  connection = this:net_open(this.irc_server, this.irc_server_port);
-  if (typeof(connection) == ERR)
-  return -1;
+  endfor
+  if (results)
+  this:tell("The verb :", name, " is on", results);
+  else
+  this:tell("The verb :", name, " is nowhere to be found.");
   endif
-  this:log_use(caller, start_time = time());
-  this:net_notify(connection, ((((((((((("USER " + this.irc_user) + " ") + $network.site) + " ") + this.irc_server) + " :") + this.irc_realname) + " for ") + tostr(player)) + " (") + player.name) + ")");
-  nick = (length(player.name) > 8) ? player.name[1..8] | player.name;
-  this:net_notify(connection, "NICK " + nick);
-  this:net_notify(connection, ("MODE " + nick) + " :-i");
   `;
+
   const Transpiler = new MooToJavascriptConverter([code]);
   //const result = Transpiler.toIntermediate();
   const result = Transpiler.toJavascript();

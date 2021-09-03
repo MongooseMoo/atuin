@@ -107,7 +107,7 @@ export class Logical extends ASTNode {
   }
 }
 
-export class While extends ASTNode {
+export class WhileLoop extends ASTNode {
   constructor(public condition: ASTNode, public body: ASTNode) {
     super();
   }
