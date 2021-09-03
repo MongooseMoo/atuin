@@ -2,6 +2,7 @@ import { generate } from "astring";
 import {
   Assignment,
   ASTNode,
+  Binary,
   Compare,
   Compound,
   Dictionary,
@@ -9,9 +10,12 @@ import {
   If,
   IntermediateTypes,
   List,
+  Logical,
   MethodCall,
   Program,
   PropertyReference,
+  Return,
+  Subscript,
   Ternary,
   Unary,
   Value,
@@ -26,6 +30,10 @@ export class MooToJavascriptConverter {
     "<=": "<==",
     ">=": ">==",
     "!=": "!==",
+  };
+
+  nameMap: any = {
+    typeof: "type_of",
   };
 
   constructor(public moocode: string[]) {}
@@ -43,9 +51,11 @@ export class MooToJavascriptConverter {
     if (node.type) {
       switch (node.type) {
         case "VAR":
-          return new Variable(node.value!);
+          return this.convertVariable(node);
         case "SIGNED_INT":
           return new Value(IntermediateTypes.int, parseInt(node.value!));
+        case "SIGNED_FLOAT":
+          return new Value(IntermediateTypes.float, parseFloat(node.value!));
         case "ESCAPED_STRING":
           return new Value(IntermediateTypes.string, node.value!);
         default:
@@ -71,18 +81,32 @@ export class MooToJavascriptConverter {
           return this.convertComparison(node);
         case "unary_expression":
           return this.convertUnary(node);
+        case "binary_expression":
+          return this.convertBinary(node);
+        case "logical_expression":
+          return this.convertLogical(node);
         case "map":
           return this.convertMap(node);
         case "list":
           return this.convertList(node);
         case "ternary":
           return this.convertTernary(node);
+        case "subscript":
+          return this.convertSubscript(node);
+        case "return":
+          return this.convertReturn(node);
         default:
           throw new Error(
             `Unknown node type ${node.data} ${JSON.stringify(node.children)}`
           );
       }
     }
+  }
+
+  convertVariable(node: MooASTNode): ASTNode {
+    const name = node.value!;
+    const validName = this.nameMap[name] || name;
+    return new Variable(validName);
   }
 
   convertPropRef(node: MooASTNode): ASTNode {
@@ -92,8 +116,23 @@ export class MooToJavascriptConverter {
   }
 
   convertUnary(node: MooASTNode): ASTNode {
-    const op = node.children[0].value!;
-    return new Unary(op, this.convertNode(node.children[1]));
+    const op = node.children[0].children[0].value!;
+    const value = this.convertNode(node.children[1]);
+    return new Unary(op, value);
+  }
+
+  convertBinary(node: MooASTNode): ASTNode {
+    const left = this.convertNode(node.children[0]);
+    const operator = node.children[1].children[0];
+    const right = this.convertNode(node.children[2]);
+    return new Binary(left, operator.value!, right);
+  }
+
+  convertLogical(node: MooASTNode): ASTNode {
+    const left = this.convertNode(node.children[0]);
+    const operator = node.children[1].children[0];
+    const right = this.convertNode(node.children[2]);
+    return new Logical(left, operator.value!, right);
   }
 
   convertFunctionCall(node: MooASTNode): ASTNode {
@@ -112,8 +151,9 @@ export class MooToJavascriptConverter {
 
   convertComparison(node: MooASTNode): ASTNode {
     const left = this.convertNode(node.children[0]);
-    const operator = node.children[1];
+    const operator = node.children[1].children[0];
     const right = this.convertNode(node.children[2]);
+
     const convertedOp = this.opMap[operator.value!] || operator.value!;
     return new Compare(left, convertedOp, right);
   }
@@ -170,9 +210,20 @@ export class MooToJavascriptConverter {
     const condition = this.convertNode(node.children[0]);
     const consequent = this.convertNode(node.children[1]);
     const alternate = this.convertNode(node.children[2]);
-    console.log(condition, consequent, alternate);
     return new Ternary(condition, consequent, alternate);
   }
+
+  convertReturn(node: MooASTNode): ASTNode {
+    return new Return(this.convertNode(node.children[0]));
+  }
+
+  convertSubscript(node: MooASTNode): ASTNode {
+    return new Subscript(
+      this.convertNode(node.children[0]),
+      this.convertNode(node.children[1])
+    );
+  }
+
   parse() {
     return parseMoocode(this.moocode);
   }
@@ -197,9 +248,10 @@ export function test() {
   this:net_notify(connection, ("MODE " + nick) + " :-i");
   `;
   const Transpiler = new MooToJavascriptConverter([code]);
-  const result = Transpiler.toIntermediate();
-  console.dir(result, { depth: null, maxArrayLength: null });
-  //console.log(result);
+  //const result = Transpiler.toIntermediate();
+  const result = Transpiler.toJavascript();
+  //console.dir(result, { depth: null, maxArrayLength: null });
+  console.log(result);
 }
 
 test();

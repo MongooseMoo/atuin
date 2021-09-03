@@ -14,6 +14,7 @@
   | compact_try
   | prop_ref
   | binary_expression
+  | logical_expression
   | comparison
   | "(" expression ")"
   |  unary_expression
@@ -36,8 +37,9 @@ break: "break" [VAR]
 continue: "continue" [VAR]
 return: "return" [expression]
 ?statement: (scatter_assignment | expression | flow_statement )? ";"
-!binary_op: ("+" | "-" | "*" | "/" | "^" | "%" | "&&" | "||")
+!binary_op: ("+" | "-" | "*" | "/" | "^" | "%" )
 !comp_op: (IN | "==" | ">=" | "<=" | "!=" | "<" | ">" )
+!logical_op: ("&&" | "||")
 !unary_op: ("!" | "~")
 
 assignment: (VAR | prop_ref | subscript) "=" expression
@@ -51,7 +53,7 @@ subscript: expression "[" ( slice | expression ) "]"
 slice: (expression slice_op expression)
 
 comparison: expression (comp_op expression)+
-
+logical_expression: expression (logical_op expression)+
 if: "if" "(" expression ")" block elseif* else? "endif"
 elseif: "elseif" "(" expression ")" block
 else: "else" block
