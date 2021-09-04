@@ -1,4 +1,9 @@
-import { BinaryOperator, LogicalOperator, UnaryOperator } from "estree";
+import {
+  AssignmentOperator,
+  BinaryOperator,
+  LogicalOperator,
+  UnaryOperator,
+} from "estree";
 import { builders } from "estree-toolkit";
 
 export enum IntermediateTypes {
@@ -8,12 +13,25 @@ export enum IntermediateTypes {
   string = "string",
 }
 
+function logCall(
+  object: Object,
+  propertyKey: string | symbol,
+  descriptor: PropertyDescriptor
+) {
+  const originalMethod = descriptor.value;
+  descriptor.value = function (...args: any) {
+    console.log(`${object.constructor.name} ${String(propertyKey)}(${args})`);
+    return originalMethod.apply(this, args);
+  };
+}
+
 export class Value {
   constructor(
     public type: IntermediateTypes = IntermediateTypes.unknown,
     public value: any = undefined
   ) {}
 
+  @logCall
   toEstree() {
     return builders.literal(this.value);
   }
@@ -32,6 +50,7 @@ export class Return extends ASTNode {
     }
   }
 
+  @logCall
   toEstree() {
     const value = this.value ? this.value.toEstree() : undefined;
     return builders.returnStatement(value);
@@ -52,6 +71,7 @@ export class If extends ASTNode {
     }
   }
 
+  @logCall
   toEstree() {
     return builders.ifStatement(
       this.condition.toEstree(),
@@ -62,15 +82,28 @@ export class If extends ASTNode {
 }
 
 export class Assignment {
-  constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
+  constructor(
+    public lhs: ASTNode,
+    public op: string,
+    public rhs: ASTNode,
+    public declare: boolean
+  ) {
     lhs.parent = this;
     rhs.parent = this;
   }
 
+  @logCall
   toEstree() {
-    return builders.variableDeclaration("let", [
-      builders.variableDeclarator(this.lhs.toEstree(), this.rhs.toEstree()),
-    ]);
+    if (this.declare) {
+      return builders.variableDeclaration("let", [
+        builders.variableDeclarator(this.lhs.toEstree(), this.rhs.toEstree()),
+      ]);
+    }
+    return builders.assignmentExpression(
+      this.op as AssignmentOperator,
+      this.lhs.toEstree(),
+      this.rhs.toEstree()
+    );
   }
 }
 
@@ -80,6 +113,7 @@ export class Unary extends ASTNode {
     rhs.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.unaryExpression(
       this.op as UnaryOperator,
@@ -96,6 +130,7 @@ export class Binary extends ASTNode {
     rhs.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.binaryExpression(
       this.op as BinaryOperator,
@@ -112,6 +147,7 @@ export class Logical extends ASTNode {
     rhs.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.logicalExpression(
       this.op as LogicalOperator,
@@ -128,6 +164,7 @@ export class WhileLoop extends ASTNode {
     body.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.whileStatement(
       this.condition.toEstree(),
@@ -142,6 +179,7 @@ export class Program extends ASTNode {
     body.map((node) => (node.parent = this));
   }
 
+  @logCall
   toEstree() {
     return builders.program(this.body.map((node) => node.toEstree()));
   }
@@ -159,10 +197,13 @@ export class MethodCall extends ASTNode {
     args.map((arg) => (arg.parent = this));
   }
 
+  @logCall
   toEstree() {
-    return builders.callExpression(
-      builders.memberExpression(this.obj.toEstree(), this.method.toEstree()),
-      this.args.map((arg) => arg.toEstree())
+    return builders.expressionStatement(
+      builders.callExpression(
+        builders.memberExpression(this.obj.toEstree(), this.method.toEstree()),
+        this.args.map((arg) => arg.toEstree())
+      )
     );
   }
 }
@@ -174,6 +215,7 @@ export class FunctionCall extends ASTNode {
     args.map((arg) => (arg.parent = this));
   }
 
+  @logCall
   toEstree() {
     return builders.callExpression(
       this.name.toEstree(),
@@ -189,6 +231,7 @@ export class TryCatch extends ASTNode {
     catchBlock.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.tryStatement(
       this.tryBlock.toEstree(),
@@ -209,6 +252,7 @@ export class ForInLoop extends ASTNode {
     body.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.forInStatement(
       this.variable.toEstree(),
@@ -224,6 +268,7 @@ export class Compound extends ASTNode {
     body.map((node) => (node.parent = this));
   }
 
+  @logCall
   toEstree() {
     return builders.blockStatement(this.body.map((node) => node.toEstree()));
   }
@@ -236,6 +281,7 @@ export class Compare extends ASTNode {
     rhs.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.binaryExpression(
       this.op as BinaryOperator,
@@ -250,6 +296,7 @@ export class Variable extends ASTNode {
     super();
   }
 
+  @logCall
   toEstree() {
     if (this.name === "this") {
       return builders.thisExpression();
@@ -265,6 +312,7 @@ export class PropertyReference extends ASTNode {
     prop.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.memberExpression(this.obj.toEstree(), this.prop.toEstree());
   }
@@ -276,6 +324,7 @@ export class List extends ASTNode {
     items.map((item) => (item.parent = this));
   }
 
+  @logCall
   toEstree() {
     return builders.arrayExpression(this.items.map((item) => item.toEstree()));
   }
@@ -290,6 +339,7 @@ export class Dictionary extends ASTNode {
     });
   }
 
+  @logCall
   toEstree() {
     const entries = this.entries.map(([key, value]) =>
       builders.property("init", key.toEstree(), value.toEstree())
@@ -310,6 +360,7 @@ export class Ternary extends ASTNode {
     elseDo.parent = this;
   }
 
+  @logCall
   toEstree() {
     return builders.expressionStatement(
       builders.conditionalExpression(
@@ -328,11 +379,14 @@ export class Subscript extends ASTNode {
     index.parent = this;
   }
 
+  @logCall
   toEstree() {
-    return builders.memberExpression(
-      this.obj.toEstree(),
-      this.index.toEstree(),
-      true
+    return builders.expressionStatement(
+      builders.memberExpression(
+        this.obj.toEstree(),
+        this.index.toEstree(),
+        true
+      )
     );
   }
 }
@@ -349,6 +403,7 @@ export class TryExpression extends ASTNode {
     errorType && (errorType.parent = this);
   }
 
+  @logCall
   toEstree() {
     return builders.callExpression(
       builders.arrowFunctionExpression(
