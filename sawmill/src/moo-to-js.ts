@@ -30,16 +30,18 @@ export interface ConvertContext {
   canDeclare: boolean; // can declare variables
 }
 
+const context: ConvertContext = { canDeclare: true };
+
 function noDeclaration(
-  object: MooToJavascriptConverter,
+  _object: any,
   _propertyKey: string | symbol,
   descriptor: PropertyDescriptor
 ) {
   const original = descriptor.value;
   descriptor.value = function (...args: any[]) {
-    object.context.canDeclare = false;
+    context.canDeclare = false;
     const result = original.apply(this, args);
-    object.context.canDeclare = true;
+    context.canDeclare = true;
     return result;
   };
 }
@@ -56,9 +58,28 @@ export class MooToJavascriptConverter {
     typeof: "type_of",
   };
 
-  public context: ConvertContext = { canDeclare: true };
-
-  constructor(public moocode: string[]) {}
+  constructor(public moocode: string[]) {
+    this.toIntermediate = this.toIntermediate.bind(this);
+    this.convertAssignment = this.convertAssignment.bind(this);
+    this.convertBinary = this.convertBinary.bind(this);
+    this.convertNode = this.convertNode.bind(this);
+    this.convertComparison = this.convertComparison.bind(this);
+    this.convertForIn = this.convertForIn.bind(this);
+    this.convertFunctionCall = this.convertFunctionCall.bind(this);
+    this.convertIf = this.convertIf.bind(this);
+    this.convertMap = this.convertMap.bind(this);
+    this.convertList = this.convertList.bind(this);
+    this.convertPropRef = this.convertPropRef.bind(this);
+    this.convertReturn = this.convertReturn.bind(this);
+    this.convertStart = this.convertStart.bind(this);
+    this.convertTernary = this.convertTernary.bind(this);
+    this.convertUnary = this.convertUnary.bind(this);
+    this.convertVariable = this.convertVariable.bind(this);
+    this.convertVerbCall = this.convertVerbCall.bind(this);
+    this.convertWhile = this.convertWhile.bind(this);
+    this.convertSubscript = this.convertSubscript.bind(this);
+    this.convertBlock = this.convertBlock.bind(this);
+  }
 
   toJavascript() {
     return generate(this.toIntermediate().toEstree(), {
@@ -217,10 +238,10 @@ export class MooToJavascriptConverter {
   }
 
   convertIf(node: MooASTNode): ASTNode {
-    const canDeclareVariables = this.context.canDeclare;
-    this.context.canDeclare = false;
+    const canDeclareVariables = context.canDeclare;
+    context.canDeclare = false;
     const condition = this.convertNode(node.children[0]) as Compare;
-    this.context.canDeclare = canDeclareVariables;
+    context.canDeclare = canDeclareVariables;
     const consequent = this.convertNode(node.children[1]);
     let alternate: ASTNode | undefined;
     if (node.children.length === 3) {
@@ -230,21 +251,21 @@ export class MooToJavascriptConverter {
   }
 
   convertForIn(node: MooASTNode): ASTNode {
-    const canDeclareVariables = this.context.canDeclare;
-    this.context.canDeclare = false;
+    const canDeclareVariables = context.canDeclare;
+    context.canDeclare = false;
     const variable = this.convertNode(node.children[0]);
     const list = this.convertNode(node.children[1]);
-    this.context.canDeclare = canDeclareVariables;
+    context.canDeclare = canDeclareVariables;
     const body = this.convertNode(node.children[2]);
     return new ForInLoop(variable, list, body);
   }
 
   convertAssignment(node: MooASTNode) {
-    const canDeclare = this.context.canDeclare;
-    this.context.canDeclare = false;
+    const canDeclare = context.canDeclare;
+    context.canDeclare = false;
     const left = this.convertNode(node.children[0]);
     const right = this.convertNode(node.children[1]);
-    this.context.canDeclare = canDeclare;
+    context.canDeclare = canDeclare;
     return new Assignment(left, "=", right, canDeclare);
   }
 
