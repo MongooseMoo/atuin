@@ -323,7 +323,7 @@ export class MooToJavascriptConverter {
   convertSubscript(node: MooASTNode): ASTNode {
     const obj = this.convertNode(node.children[0]);
     const subscript = this.convertNode(node.children[1]);
-    return new Subscript(obj, obj);
+    return new Subscript(obj, subscript);
   }
 
   parse() {
@@ -359,4 +359,4 @@ export function test() {
   console.log(result);
 }
 
-test();
+//test();

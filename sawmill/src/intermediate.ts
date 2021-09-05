@@ -381,13 +381,7 @@ export class Subscript extends ASTNode {
 
   @logCall
   toEstree() {
-    return builders.expressionStatement(
-      builders.memberExpression(
-        this.obj.toEstree(),
-        this.index.toEstree(),
-        true
-      )
-    );
+    builders.memberExpression(this.obj.toEstree(), this.index.toEstree(), true);
   }
 }
 
