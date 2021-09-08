@@ -27,6 +27,7 @@ function logCall(
 }
 
 export class Value {
+  expression = true;
   constructor(
     public type: IntermediateTypes = IntermediateTypes.unknown,
     public value: any = undefined,
@@ -42,10 +43,12 @@ export class Value {
 export abstract class ASTNode {
   parent?: ASTNode | null = null;
   loc: SourceLocation | null = null;
+  expression: boolean = false;
   abstract toEstree(): any;
 }
 
 export class Return extends ASTNode {
+  override expression = true;
   constructor(
     public value?: ASTNode,
     public override loc: SourceLocation | null = null
@@ -99,6 +102,7 @@ export class Assignment extends ASTNode {
     super();
     lhs.parent = this;
     rhs.parent = this;
+    this.expression = !declare;
   }
 
   @logCall
@@ -117,6 +121,7 @@ export class Assignment extends ASTNode {
 }
 
 export class Unary extends ASTNode {
+  override expression = true;
   constructor(
     public op: string,
     public rhs: ASTNode,
@@ -137,6 +142,7 @@ export class Unary extends ASTNode {
 }
 
 export class Binary extends ASTNode {
+  override expression = true;
   constructor(
     public lhs: ASTNode,
     public op: string,
@@ -159,6 +165,7 @@ export class Binary extends ASTNode {
 }
 
 export class Logical extends ASTNode {
+  override expression = true;
   constructor(
     public lhs: ASTNode,
     public op: string,
@@ -211,11 +218,20 @@ export class Program extends ASTNode {
 
   @logCall
   toEstree() {
-    return builders.program(this.body.map((node) => node.toEstree()));
+    return builders.program(
+      this.body.map((node) => {
+        if (node.expression === true) {
+          return builders.expressionStatement(node.toEstree());
+        } else {
+          return node.toEstree();
+        }
+      })
+    );
   }
 }
 
 export class MethodCall extends ASTNode {
+  override expression = true;
   constructor(
     public obj: ASTNode,
     public method: ASTNode,
@@ -238,6 +254,7 @@ export class MethodCall extends ASTNode {
 }
 
 export class FunctionCall extends ASTNode {
+  override expression = true;
   constructor(
     public name: ASTNode,
     public args: ASTNode[],
@@ -311,11 +328,20 @@ export class Compound extends ASTNode {
 
   @logCall
   toEstree() {
-    return builders.blockStatement(this.body.map((node) => node.toEstree()));
+    return builders.blockStatement(
+      this.body.map((node) => {
+        if (node.expression) {
+          return builders.expressionStatement(node.toEstree());
+        } else {
+          return node.toEstree();
+        }
+      })
+    );
   }
 }
 
 export class Compare extends ASTNode {
+  override expression = true;
   constructor(
     public lhs: ASTNode,
     public op: string,
@@ -355,6 +381,7 @@ export class Variable extends ASTNode {
 }
 
 export class PropertyReference extends ASTNode {
+  override expression = true;
   constructor(
     public obj: ASTNode,
     public prop: ASTNode,
@@ -372,6 +399,7 @@ export class PropertyReference extends ASTNode {
 }
 
 export class List extends ASTNode {
+  override expression = true;
   constructor(
     public items: ASTNode[],
     public override loc: SourceLocation | null = null
@@ -387,6 +415,7 @@ export class List extends ASTNode {
 }
 
 export class Dictionary extends ASTNode {
+  override expression = true;
   constructor(
     public entries: [ASTNode, ASTNode][],
     public override loc: SourceLocation | null = null
@@ -408,6 +437,7 @@ export class Dictionary extends ASTNode {
 }
 
 export class Ternary extends ASTNode {
+  override expression = true;
   constructor(
     public condition: ASTNode,
     public then: ASTNode,
@@ -422,17 +452,16 @@ export class Ternary extends ASTNode {
 
   @logCall
   toEstree() {
-    return builders.expressionStatement(
-      builders.conditionalExpression(
-        this.condition.toEstree(),
-        this.then.toEstree(),
-        this.elseDo.toEstree()
-      )
+    builders.conditionalExpression(
+      this.condition.toEstree(),
+      this.then.toEstree(),
+      this.elseDo.toEstree()
     );
   }
 }
 
 export class Subscript extends ASTNode {
+  override expression = true;
   constructor(
     public obj: ASTNode,
     public index: ASTNode,
@@ -454,14 +483,15 @@ export class Subscript extends ASTNode {
 }
 
 export class TryExpression extends ASTNode {
+  override expression = true;
   constructor(
-    public expression: ASTNode,
+    public tryExpression: ASTNode,
     public catchBlock: ASTNode,
     public errorType?: ASTNode,
     public override loc: SourceLocation | null = null
   ) {
     super();
-    expression.parent = this;
+    tryExpression.parent = this;
     catchBlock.parent = this;
     errorType && (errorType.parent = this);
   }
@@ -473,13 +503,40 @@ export class TryExpression extends ASTNode {
         [],
         builders.blockStatement([
           builders.tryStatement(
-            this.expression.toEstree(), // try
-            builders.catchClause(null, this.catchBlock.toEstree()),
+            builders.blockStatement([
+              builders.expressionStatement(this.tryExpression.toEstree()),
+            ]), // try
+            builders.catchClause(
+              null,
+              builders.blockStatement([
+                builders.expressionStatement(this.catchBlock.toEstree()),
+              ])
+            ),
             null // finalizer
           ),
         ])
       ),
       []
     );
+  }
+}
+
+export class Break extends ASTNode {
+  constructor(override loc: SourceLocation | null = null) {
+    super();
+  }
+
+  toEstree() {
+    return builders.breakStatement();
+  }
+}
+
+export class Continue extends ASTNode {
+  constructor(override loc: SourceLocation | null = null) {
+    super();
+  }
+
+  toEstree() {
+    return builders.continueStatement();
   }
 }
