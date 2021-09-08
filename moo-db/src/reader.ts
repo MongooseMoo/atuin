@@ -207,6 +207,7 @@ export class MooDatabaseReader {
   readDatabaseV17(db: MooDatabase) {
     this.readPlayers(db);
     this.readPending(db);
+    this.readClocks();
     this.readTaskQueue(db);
     this.readConnections();
     db.totalObjects = this.readInt();
