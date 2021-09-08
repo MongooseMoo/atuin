@@ -39,9 +39,10 @@ function noDeclaration(
 ) {
   const original = descriptor.value;
   descriptor.value = function (...args: any[]) {
+    const canDeclare = context.canDeclare;
     context.canDeclare = false;
     const result = original.apply(this, args);
-    context.canDeclare = true;
+    context.canDeclare = canDeclare;
     return result;
   };
 }
@@ -160,7 +161,8 @@ export class MooToJavascriptConverter {
     if (!hasErrorType) {
       return new TryExpression(
         this.convertNode(node.children[0]),
-        this.convertNode(node.children[1])
+        this.convertNode(node.children[1]),
+        undefined
       );
     }
     return new TryExpression(
@@ -279,6 +281,7 @@ export class MooToJavascriptConverter {
     return new MethodCall(obj, name, args);
   }
 
+  @noDeclaration
   convertBlock(node: MooASTNode) {
     const block = new Compound();
     block.body = node.children.map((child) => this.convertNode(child));
@@ -359,4 +362,4 @@ export function test() {
   console.log(result);
 }
 
-//test();
+test();
