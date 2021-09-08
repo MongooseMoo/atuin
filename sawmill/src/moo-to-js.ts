@@ -1,3 +1,4 @@
+import { SourceLocation } from "acorn";
 import { generate } from "astring";
 import {
   Assignment,
@@ -59,28 +60,7 @@ export class MooToJavascriptConverter {
     typeof: "type_of",
   };
 
-  constructor(public moocode: string[]) {
-    this.toIntermediate = this.toIntermediate.bind(this);
-    this.convertAssignment = this.convertAssignment.bind(this);
-    this.convertBinary = this.convertBinary.bind(this);
-    this.convertNode = this.convertNode.bind(this);
-    this.convertComparison = this.convertComparison.bind(this);
-    this.convertForIn = this.convertForIn.bind(this);
-    this.convertFunctionCall = this.convertFunctionCall.bind(this);
-    this.convertIf = this.convertIf.bind(this);
-    this.convertMap = this.convertMap.bind(this);
-    this.convertList = this.convertList.bind(this);
-    this.convertPropRef = this.convertPropRef.bind(this);
-    this.convertReturn = this.convertReturn.bind(this);
-    this.convertStart = this.convertStart.bind(this);
-    this.convertTernary = this.convertTernary.bind(this);
-    this.convertUnary = this.convertUnary.bind(this);
-    this.convertVariable = this.convertVariable.bind(this);
-    this.convertVerbCall = this.convertVerbCall.bind(this);
-    this.convertWhile = this.convertWhile.bind(this);
-    this.convertSubscript = this.convertSubscript.bind(this);
-    this.convertBlock = this.convertBlock.bind(this);
-  }
+  constructor(public moocode: string[]) {}
 
   toJavascript() {
     return generate(this.toIntermediate().toEstree(), {
@@ -162,41 +142,53 @@ export class MooToJavascriptConverter {
       return new TryExpression(
         this.convertNode(node.children[0]),
         this.convertNode(node.children[1]),
-        undefined
+        undefined,
+        this.sourceLocation(node)
       );
     }
     return new TryExpression(
       this.convertNode(node.children[0]),
       this.convertNode(node.children[1]),
-      this.convertNode(node.children[2])
+      this.convertNode(node.children[2]),
+      this.sourceLocation(node)
     );
+  }
+
+  sourceLocation(node: MooASTNode): SourceLocation {
+    return {
+      start: { offset: node.start_pos, line: node.line, column: node.column },
+      end: {
+        offset: node.end_pos,
+        line: node.end_line,
+        column: node.end_column,
+      },
+    };
   }
 
   convertWhile(node: MooASTNode): ASTNode {
     const condition = this.convertNode(node.children[0]);
     const body = this.convertNode(node.children[1]);
-    return new WhileLoop(condition, body);
+    return new WhileLoop(condition, body, this.sourceLocation(node));
   }
 
   convertVariable(node: MooASTNode): ASTNode {
     const name = node.value!;
     const validName = this.nameMap[name] || name;
-    return new Variable(validName);
+    return new Variable(validName, this.sourceLocation(node));
   }
 
   @noDeclaration
   convertPropRef(node: MooASTNode): ASTNode {
     const obj = this.convertNode(node.children[0]);
     const prop = this.convertNode(node.children[1]);
-
-    return new PropertyReference(obj, prop);
+    return new PropertyReference(obj, prop, this.sourceLocation(node));
   }
 
   @noDeclaration
   convertUnary(node: MooASTNode): ASTNode {
     const op = node.children[0].children[0].value!;
     const value = this.convertNode(node.children[1]);
-    return new Unary(op, value);
+    return new Unary(op, value, this.sourceLocation(node));
   }
 
   @noDeclaration
@@ -204,7 +196,7 @@ export class MooToJavascriptConverter {
     const left = this.convertNode(node.children[0]);
     const operator = node.children[1].children[0];
     const right = this.convertNode(node.children[2]);
-    return new Binary(left, operator.value!, right);
+    return new Binary(left, operator.value!, right, this.sourceLocation(node));
   }
 
   @noDeclaration
@@ -212,7 +204,7 @@ export class MooToJavascriptConverter {
     const left = this.convertNode(node.children[0]);
     const operator = node.children[1].children[0];
     const right = this.convertNode(node.children[2]);
-    return new Logical(left, operator.value!, right);
+    return new Logical(left, operator.value!, right, this.sourceLocation(node));
   }
 
   @noDeclaration
@@ -221,12 +213,13 @@ export class MooToJavascriptConverter {
     const args = node.children[1].children.map((child) =>
       this.convertNode(child)
     );
-    return new FunctionCall(name, args);
+    return new FunctionCall(name, args, this.sourceLocation(node));
   }
 
   convertStart(node: MooASTNode): ASTNode {
     return new Program(
-      node.children[0].children.map((child) => this.convertNode(child))
+      node.children[0].children.map((child) => this.convertNode(child)),
+      this.sourceLocation(node)
     );
   }
 
@@ -236,7 +229,7 @@ export class MooToJavascriptConverter {
     const operator = node.children[1].children[0];
     const right = this.convertNode(node.children[2]);
     const convertedOp = this.opMap[operator.value!] || operator.value!;
-    return new Compare(left, convertedOp, right);
+    return new Compare(left, convertedOp, right, this.sourceLocation(node));
   }
 
   convertIf(node: MooASTNode): ASTNode {
@@ -249,7 +242,7 @@ export class MooToJavascriptConverter {
     if (node.children.length === 3) {
       alternate = this.convertNode(node.children[2].children[0]);
     }
-    return new If(condition, consequent, alternate);
+    return new If(condition, consequent, alternate, this.sourceLocation(node));
   }
 
   convertForIn(node: MooASTNode): ASTNode {
@@ -259,7 +252,7 @@ export class MooToJavascriptConverter {
     const list = this.convertNode(node.children[1]);
     context.canDeclare = canDeclareVariables;
     const body = this.convertNode(node.children[2]);
-    return new ForInLoop(variable, list, body);
+    return new ForInLoop(variable, list, body, this.sourceLocation(node));
   }
 
   convertAssignment(node: MooASTNode) {
@@ -268,7 +261,13 @@ export class MooToJavascriptConverter {
     const left = this.convertNode(node.children[0]);
     const right = this.convertNode(node.children[1]);
     context.canDeclare = canDeclare;
-    return new Assignment(left, "=", right, canDeclare);
+    return new Assignment(
+      left,
+      "=",
+      right,
+      canDeclare,
+      this.sourceLocation(node)
+    );
   }
 
   @noDeclaration
@@ -278,14 +277,13 @@ export class MooToJavascriptConverter {
     const args = node.children[2].children.map((child) =>
       this.convertNode(child)
     );
-    return new MethodCall(obj, name, args);
+    return new MethodCall(obj, name, args, this.sourceLocation(node));
   }
 
   @noDeclaration
   convertBlock(node: MooASTNode) {
-    const block = new Compound();
-    block.body = node.children.map((child) => this.convertNode(child));
-    return block;
+    const body = node.children.map((child) => this.convertNode(child));
+    return new Compound(body, this.sourceLocation(node));
   }
 
   @noDeclaration
@@ -296,7 +294,7 @@ export class MooToJavascriptConverter {
         this.convertNode(child.children[1]),
       ];
     });
-    return new Dictionary(entries);
+    return new Dictionary(entries, this.sourceLocation(node));
   }
 
   @noDeclaration
@@ -304,7 +302,7 @@ export class MooToJavascriptConverter {
     const entries: ASTNode[] = node.children.map((child) => {
       return this.convertNode(child);
     });
-    return new List(entries);
+    return new List(entries, this.sourceLocation(node));
   }
 
   @noDeclaration
@@ -312,21 +310,26 @@ export class MooToJavascriptConverter {
     const condition = this.convertNode(node.children[0]);
     const consequent = this.convertNode(node.children[1]);
     const alternate = this.convertNode(node.children[2]);
-    return new Ternary(condition, consequent, alternate);
+    return new Ternary(
+      condition,
+      consequent,
+      alternate,
+      this.sourceLocation(node)
+    );
   }
 
   @noDeclaration
   convertReturn(node: MooASTNode): ASTNode {
     const value = node.children[0];
     const toReturn = value ? this.convertNode(value) : undefined;
-    return new Return(toReturn);
+    return new Return(toReturn, this.sourceLocation(node));
   }
 
   @noDeclaration
   convertSubscript(node: MooASTNode): ASTNode {
     const obj = this.convertNode(node.children[0]);
     const subscript = this.convertNode(node.children[1]);
-    return new Subscript(obj, subscript);
+    return new Subscript(obj, subscript, this.sourceLocation(node));
   }
 
   parse() {
@@ -362,4 +365,4 @@ export function test() {
   console.log(result);
 }
 
-test();
+// test();

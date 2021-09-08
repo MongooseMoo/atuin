@@ -457,7 +457,8 @@ export class TryExpression extends ASTNode {
   constructor(
     public expression: ASTNode,
     public catchBlock: ASTNode,
-    public errorType?: ASTNode
+    public errorType?: ASTNode,
+    public override loc: SourceLocation | null = null
   ) {
     super();
     expression.parent = this;

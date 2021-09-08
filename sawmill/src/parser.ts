@@ -1,13 +1,19 @@
 import { parse } from "path/posix";
 import { get_parser } from "./mooparser";
 
-const mooParser = get_parser();
+const mooParser = get_parser({ propagate_positions: true });
 
 export interface MooASTNode {
   data: string;
   children: this[];
   type?: string;
   value?: string;
+  start_pos: number;
+  end_pos: number;
+  line: number;
+  end_line: number;
+  column: number;
+  end_column: number;
 }
 
 export function parseMoocode(moocode: string[]) {
