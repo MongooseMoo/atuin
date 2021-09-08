@@ -21,12 +21,15 @@ const activationHeaderRe =
   /-?(\d+) -?\d+ -?\d+ -?(\d+) -?\d+ -?(\d+) -?(\d+) -?\d+ -?(\d+)/;
 const pendingValueRe = /(?<count>\d+) values pending finalization/;
 const suspendedTaskCountRe = /(?<count>\d+) suspended tasks/;
-const suspendedTaskHeaderRe = /(?<startTime>\d+) (?<id>\d+)(?<endchar>\n| )(?<value>|.+\n)/;
-const vmHeaderRe = /(?<top>\d+) (?<vector>-?\d+) (?<funcId>\d+)(\n| (?<maxStackframes>\d))/;
-const connectionCountRe = /(?<count>\d+) active connections(?<listener_tag>| with listeners)/;
+const suspendedTaskHeaderRe =
+  /(?<startTime>\d+) (?<id>\d+)(?<endchar>\n| )(?<value>|.+\n)/;
+const vmHeaderRe =
+  /(?<top>\d+) (?<vector>-?\d+) (?<funcId>\d+)(\n| (?<maxStackframes>\d))/;
+const connectionCountRe =
+  /(?<count>\d+) active connections(?<listener_tag>| with listeners)/;
 
 export class MooDatabaseReader {
-  constructor(public data: string, private pos: number = 0) { }
+  constructor(public data: string, private pos: number = 0) {}
 
   readInt() {
     return parseInt(this.readLine());
@@ -173,17 +176,25 @@ export class MooDatabaseReader {
     db.totalVerbs = this.readInt();
     this.readLine();
     this.readPlayers(db);
+    this.readObjects(db);
+    this.readVerbs(db);
+    this.readClocks();
+    this.readTaskQueue(db);
+    return db;
+  }
+
+  readVerbs(db: MooDatabase) {
+    for (let i = 0; i < db.totalVerbs; i++) {
+      this.readVerb(db);
+    }
+  }
+
+  readObjects(db: MooDatabase) {
     for (let i = 0; i < db.totalObjects; i++) {
       const obj = this.readObject();
       if (!obj) continue;
       db.objects.set(obj.oid, obj);
     }
-    for (let i = 0; i < db.totalVerbs; i++) {
-      this.readVerb(db);
-    }
-    this.readClocks();
-    this.readTaskQueue(db);
-    return db;
   }
 
   readPlayers(db: MooDatabase) {
@@ -197,16 +208,18 @@ export class MooDatabaseReader {
     this.readPlayers(db);
     this.readPending(db);
     this.readTaskQueue(db);
-    this.readConnections(db);
+    this.readConnections();
     db.totalObjects = this.readInt();
-
+    this.readObjects(db);
+    db.totalVerbs = this.readInt();
+    this.readVerbs(db);
     return db;
   }
 
-  readConnections(db: MooDatabase) {
+  readConnections() {
     const headerMatch = connectionCountRe.exec(this.readLine());
     if (!headerMatch || !headerMatch.groups) {
-      this.parsingError('Bad active connections header line');
+      this.parsingError("Bad active connections header line");
     }
     const count = parseInt(headerMatch.groups.count);
     for (let i = 0; i < count; i++) {
@@ -339,14 +352,13 @@ export class MooDatabaseReader {
     throw new Error(`Database parse error on line   ${lineno}: ${message}`);
   }
 
-
   readPending(db: MooDatabase) {
-    const valueLine = this.readLine()
-    const valueMatch = pendingValueRe.exec(valueLine)
+    const valueLine = this.readLine();
+    const valueMatch = pendingValueRe.exec(valueLine);
     if (!valueMatch || !valueMatch.groups) {
-      this.parsingError('Bad pending finalizations');
+      this.parsingError("Bad pending finalizations");
     }
-    const finalizationCount = parseInt(valueMatch.groups.count)
+    const finalizationCount = parseInt(valueMatch.groups.count);
     for (let i = 0; i < finalizationCount; i++) {
       this.readPendingValue(db);
     }
@@ -357,14 +369,13 @@ export class MooDatabaseReader {
     return this.readValue();
   }
 
-
   readSuspendedTasks(db: MooDatabase) {
-    const valueLine = this.readLine()
+    const valueLine = this.readLine();
     const suspendedMatch = suspendedTaskCountRe.exec(valueLine);
     if (!suspendedMatch || !suspendedMatch.groups) {
-      this.parsingError('Bad suspended tasks header')
+      this.parsingError("Bad suspended tasks header");
     }
-    const count = parseInt(suspendedMatch?.groups.count)
+    const count = parseInt(suspendedMatch?.groups.count);
     for (let i = 0; i < count; i++) {
       const task = this.readSuspendedTask(db);
     }
@@ -374,7 +385,7 @@ export class MooDatabaseReader {
     const headerLine = this.readLine();
     const taskMatch = suspendedTaskHeaderRe.exec(headerLine);
     if (!taskMatch || !taskMatch.groups) {
-      this.parsingError('Bad suspended task header')
+      this.parsingError("Bad suspended task header");
     }
     const id = parseInt(taskMatch.groups.id);
     const startTime = parseInt(taskMatch.groups.startTime);
@@ -392,14 +403,14 @@ export class MooDatabaseReader {
     const headerLine = this.readLine();
     const vmHeader = vmHeaderRe.exec(headerLine);
     if (!vmHeader || !vmHeader.groups) {
-      this.parsingError('Bad VM header line');
+      this.parsingError("Bad VM header line");
     }
     const top = parseInt(vmHeader.groups.top);
     const vector = parseInt(vmHeader.groups.vector);
     const funcId = parseInt(vmHeader.groups.funcId);
     task.vmData = { top, vector, funcId };
     if (vmHeader.groups.maxStackframes) {
-      task.vmData['maxStackframes'] = parseInt(vmHeader.groups.maxStackframes);
+      task.vmData["maxStackframes"] = parseInt(vmHeader.groups.maxStackframes);
     }
     for (let i = 0; i < top; i++) {
       task.vmData.activationStack?.push(this.readActivation());
