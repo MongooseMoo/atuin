@@ -1,3 +1,4 @@
+import { SourceLocation } from "acorn";
 import {
   AssignmentOperator,
   BinaryOperator,
@@ -28,7 +29,8 @@ function logCall(
 export class Value {
   constructor(
     public type: IntermediateTypes = IntermediateTypes.unknown,
-    public value: any = undefined
+    public value: any = undefined,
+    public loc: SourceLocation | null = null
   ) {}
 
   @logCall
@@ -39,11 +41,15 @@ export class Value {
 
 export abstract class ASTNode {
   parent?: ASTNode | null = null;
+  loc: SourceLocation | null = null;
   abstract toEstree(): any;
 }
 
 export class Return extends ASTNode {
-  constructor(public value?: ASTNode) {
+  constructor(
+    public value?: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     if (value) {
       value.parent = this;
@@ -61,7 +67,8 @@ export class If extends ASTNode {
   constructor(
     public condition: Compare,
     public then: ASTNode,
-    public elseDo?: ASTNode
+    public elseDo?: ASTNode,
+    public override loc: SourceLocation | null = null
   ) {
     super();
     condition.parent = this;
@@ -81,13 +88,15 @@ export class If extends ASTNode {
   }
 }
 
-export class Assignment {
+export class Assignment extends ASTNode {
   constructor(
     public lhs: ASTNode,
     public op: string,
     public rhs: ASTNode,
-    public declare: boolean
+    public declare: boolean,
+    public override loc: SourceLocation | null = null
   ) {
+    super();
     lhs.parent = this;
     rhs.parent = this;
   }
@@ -108,7 +117,11 @@ export class Assignment {
 }
 
 export class Unary extends ASTNode {
-  constructor(public op: string, public rhs: ASTNode) {
+  constructor(
+    public op: string,
+    public rhs: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     rhs.parent = this;
   }
@@ -124,7 +137,12 @@ export class Unary extends ASTNode {
 }
 
 export class Binary extends ASTNode {
-  constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
+  constructor(
+    public lhs: ASTNode,
+    public op: string,
+    public rhs: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     lhs.parent = this;
     rhs.parent = this;
@@ -141,7 +159,12 @@ export class Binary extends ASTNode {
 }
 
 export class Logical extends ASTNode {
-  constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
+  constructor(
+    public lhs: ASTNode,
+    public op: string,
+    public rhs: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     lhs.parent = this;
     rhs.parent = this;
@@ -158,7 +181,11 @@ export class Logical extends ASTNode {
 }
 
 export class WhileLoop extends ASTNode {
-  constructor(public condition: ASTNode, public body: ASTNode) {
+  constructor(
+    public condition: ASTNode,
+    public body: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     condition.parent = this;
     body.parent = this;
@@ -174,7 +201,10 @@ export class WhileLoop extends ASTNode {
 }
 
 export class Program extends ASTNode {
-  constructor(public body: ASTNode[] = []) {
+  constructor(
+    public body: ASTNode[] = [],
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     body.map((node) => (node.parent = this));
   }
@@ -189,7 +219,8 @@ export class MethodCall extends ASTNode {
   constructor(
     public obj: ASTNode,
     public method: ASTNode,
-    public args: ASTNode[]
+    public args: ASTNode[],
+    public override loc: SourceLocation | null = null
   ) {
     super();
     obj.parent = this;
@@ -199,17 +230,19 @@ export class MethodCall extends ASTNode {
 
   @logCall
   toEstree() {
-    return builders.expressionStatement(
-      builders.callExpression(
-        builders.memberExpression(this.obj.toEstree(), this.method.toEstree()),
-        this.args.map((arg) => arg.toEstree())
-      )
+    return builders.callExpression(
+      builders.memberExpression(this.obj.toEstree(), this.method.toEstree()),
+      this.args.map((arg) => arg.toEstree())
     );
   }
 }
 
 export class FunctionCall extends ASTNode {
-  constructor(public name: ASTNode, public args: ASTNode[]) {
+  constructor(
+    public name: ASTNode,
+    public args: ASTNode[],
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     name.parent = this;
     args.map((arg) => (arg.parent = this));
@@ -225,7 +258,11 @@ export class FunctionCall extends ASTNode {
 }
 
 export class TryCatch extends ASTNode {
-  constructor(public tryBlock: ASTNode, public catchBlock: ASTNode) {
+  constructor(
+    public tryBlock: ASTNode,
+    public catchBlock: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     tryBlock.parent = this;
     catchBlock.parent = this;
@@ -244,7 +281,8 @@ export class ForInLoop extends ASTNode {
   constructor(
     public variable: ASTNode,
     public collection: ASTNode,
-    public body: ASTNode
+    public body: ASTNode,
+    public override loc: SourceLocation | null = null
   ) {
     super();
     variable.parent = this;
@@ -263,7 +301,10 @@ export class ForInLoop extends ASTNode {
 }
 
 export class Compound extends ASTNode {
-  constructor(public body: ASTNode[] = []) {
+  constructor(
+    public body: ASTNode[] = [],
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     body.map((node) => (node.parent = this));
   }
@@ -275,7 +316,12 @@ export class Compound extends ASTNode {
 }
 
 export class Compare extends ASTNode {
-  constructor(public lhs: ASTNode, public op: string, public rhs: ASTNode) {
+  constructor(
+    public lhs: ASTNode,
+    public op: string,
+    public rhs: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     lhs.parent = this;
     rhs.parent = this;
@@ -292,7 +338,10 @@ export class Compare extends ASTNode {
 }
 
 export class Variable extends ASTNode {
-  constructor(public name: string) {
+  constructor(
+    public name: string,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
   }
 
@@ -306,7 +355,11 @@ export class Variable extends ASTNode {
 }
 
 export class PropertyReference extends ASTNode {
-  constructor(public obj: ASTNode, public prop: ASTNode) {
+  constructor(
+    public obj: ASTNode,
+    public prop: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     obj.parent = this;
     prop.parent = this;
@@ -319,7 +372,10 @@ export class PropertyReference extends ASTNode {
 }
 
 export class List extends ASTNode {
-  constructor(public items: ASTNode[]) {
+  constructor(
+    public items: ASTNode[],
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     items.map((item) => (item.parent = this));
   }
@@ -331,7 +387,10 @@ export class List extends ASTNode {
 }
 
 export class Dictionary extends ASTNode {
-  constructor(public entries: [ASTNode, ASTNode][]) {
+  constructor(
+    public entries: [ASTNode, ASTNode][],
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     entries.map(([key, value]) => {
       key.parent = this;
@@ -352,7 +411,8 @@ export class Ternary extends ASTNode {
   constructor(
     public condition: ASTNode,
     public then: ASTNode,
-    public elseDo: ASTNode
+    public elseDo: ASTNode,
+    public override loc: SourceLocation | null = null
   ) {
     super();
     condition.parent = this;
@@ -373,7 +433,11 @@ export class Ternary extends ASTNode {
 }
 
 export class Subscript extends ASTNode {
-  constructor(public obj: ASTNode, public index: ASTNode) {
+  constructor(
+    public obj: ASTNode,
+    public index: ASTNode,
+    public override loc: SourceLocation | null = null
+  ) {
     super();
     obj.parent = this;
     index.parent = this;
@@ -381,7 +445,11 @@ export class Subscript extends ASTNode {
 
   @logCall
   toEstree() {
-    builders.memberExpression(this.obj.toEstree(), this.index.toEstree(), true);
+    return builders.memberExpression(
+      this.obj.toEstree(),
+      this.index.toEstree(),
+      true
+    );
   }
 }
 
