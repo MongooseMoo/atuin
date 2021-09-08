@@ -23,6 +23,7 @@ const pendingValueRe = /(?<count>\d+) values pending finalization/;
 const suspendedTaskCountRe = /(?<count>\d+) suspended tasks/;
 const suspendedTaskHeaderRe = /(?<startTime>\d+) (?<id>\d+)(?<endchar>\n| )(?<value>|.+\n)/;
 const vmHeaderRe = /(?<top>\d+) (?<vector>-?\d+) (?<funcId>\d+)(\n| (?<maxStackframes>\d))/;
+const connectionCountRe = /(?<count>\d+) active connections(?<listener_tag>| with listeners)/;
 
 export class MooDatabaseReader {
   constructor(public data: string, private pos: number = 0) { }
@@ -193,7 +194,25 @@ export class MooDatabaseReader {
   }
 
   readDatabaseV17(db: MooDatabase) {
+    this.readPlayers(db);
+    this.readPending(db);
+    this.readTaskQueue(db);
+    this.readConnections(db);
+    db.totalObjects = this.readInt();
+
     return db;
+  }
+
+  readConnections(db: MooDatabase) {
+    const headerMatch = connectionCountRe.exec(this.readLine());
+    if (!headerMatch || !headerMatch.groups) {
+      this.parsingError('Bad active connections header line');
+    }
+    const count = parseInt(headerMatch.groups.count);
+    for (let i = 0; i < count; i++) {
+      // Read and discard `count` lines; this data is useless to us.
+      this.readLine();
+    }
   }
 
   readVerb(db: MooDatabase) {
