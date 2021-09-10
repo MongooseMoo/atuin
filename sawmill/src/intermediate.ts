@@ -14,6 +14,8 @@ export enum IntermediateTypes {
   string = "string",
 }
 
+const LOG = false;
+
 function logCall(
   object: Object,
   propertyKey: string | symbol,
@@ -21,7 +23,9 @@ function logCall(
 ) {
   const originalMethod = descriptor.value;
   descriptor.value = function (...args: any) {
-    console.log(`${object.constructor.name} ${String(propertyKey)}(${args})`);
+    if (LOG) {
+      console.log(`${object.constructor.name} ${String(propertyKey)}(${args})`);
+    }
     return originalMethod.apply(this, args);
   };
 }
@@ -504,7 +508,7 @@ export class TryExpression extends ASTNode {
         builders.blockStatement([
           builders.tryStatement(
             builders.blockStatement([
-              builders.expressionStatement(this.tryExpression.toEstree()),
+              builders.returnStatement(this.tryExpression.toEstree()),
             ]), // try
             builders.catchClause(
               null,
@@ -522,7 +526,10 @@ export class TryExpression extends ASTNode {
 }
 
 export class Break extends ASTNode {
-  constructor(override loc: SourceLocation | null = null) {
+  constructor(
+    public id?: Variable,
+    override loc: SourceLocation | null = null
+  ) {
     super();
   }
 
@@ -532,7 +539,10 @@ export class Break extends ASTNode {
 }
 
 export class Continue extends ASTNode {
-  constructor(override loc: SourceLocation | null = null) {
+  constructor(
+    public id?: Variable,
+    override loc: SourceLocation | null = null
+  ) {
     super();
   }
 

@@ -146,11 +146,11 @@ export class MooToJavascriptConverter {
   }
 
   convertContinue(node: MooASTNode): Continue {
-    return new Continue(this.sourceLocation(node));
+    return new Continue(undefined, this.sourceLocation(node));
   }
 
   convertBreak(node: MooASTNode): Break {
-    return new Break(this.sourceLocation(node));
+    return new Break(undefined, this.sourceLocation(node));
   }
 
   convertCompactTry(node: MooASTNode): TryExpression {
