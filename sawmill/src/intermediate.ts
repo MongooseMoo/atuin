@@ -550,3 +550,18 @@ export class Continue extends ASTNode {
     return builders.continueStatement();
   }
 }
+
+export class ScatterNames extends ASTNode {
+  constructor(
+    public names: Variable[],
+    override loc: SourceLocation | null = null
+  ) {
+    super();
+  }
+
+  toEstree() {
+    return builders.arrayPattern(
+      this.names.map((name) => name.toEstree() as any)
+    );
+  }
+}

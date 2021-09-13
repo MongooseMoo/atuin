@@ -19,6 +19,7 @@ import {
   Program,
   PropertyReference,
   Return,
+  ScatterNames,
   Subscript,
   Ternary,
   TryExpression,
@@ -106,6 +107,7 @@ export class MooToJavascriptConverter {
         case "while":
           return this.convertWhile(node);
         case "assignment":
+        case "scatter_assignment":
           return this.convertAssignment(node);
         case "verb_call":
           return this.convertVerbCall(node);
@@ -127,6 +129,8 @@ export class MooToJavascriptConverter {
           return this.convertMap(node);
         case "list":
           return this.convertList(node);
+        case "scatter_names":
+          return this.convertScatterNames(node);
         case "ternary":
           return this.convertTernary(node);
         case "subscript":
@@ -143,6 +147,13 @@ export class MooToJavascriptConverter {
           );
       }
     }
+  }
+
+  convertScatterNames(node: MooASTNode): ASTNode {
+    const names = node.children.map((child) => this.convertNode(child));
+    console.log(names);
+    //@ts-expect-error
+    return new ScatterNames(names, this.sourceLocation(node));
   }
 
   convertContinue(node: MooASTNode): Continue {
