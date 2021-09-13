@@ -3,12 +3,13 @@ const readline = require("readline");
 const util = require("util");
 const mooparser = require("./src/mooparser").get_parser();
 import { MooToJavascriptConverter } from "./src/moo-to-js";
-let decompiler: (code: string) => any;
+
+let decompiler: (code: string) => any = decompileJavascript;
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
-  prompt: "Decompile> ",
+  prompt: "JS>",
 });
 
 rl.prompt();
@@ -19,23 +20,30 @@ rl.on("line", (line: string) => {
     rl.close();
     return;
   } else if (command === "help") {
-    console.log("Commands: exit, help, intermediate, javascript, moo");
+    console.log(
+      "Commands: exit, help, intermediate, javascript, moo, transpile"
+    );
     return rl.prompt();
   } else if (command === "javascript") {
     decompiler = decompileJavascript;
+    rl.setPrompt("JS>");
     return rl.prompt();
   } else if (command === "intermediate") {
     decompiler = decompileIntermediate;
+    rl.setPrompt("Intermediate>");
     return rl.prompt();
   } else if (command === "moo") {
     decompiler = decompileMoo;
+    rl.setPrompt("Moo>");
     return rl.prompt();
   } else if (command === "transpile") {
     decompiler = transpile;
+    rl.setPrompt("Transpile>");
     return rl.prompt();
   }
   try {
-    displayTree(decompiler(line));
+    var lastTree = decompiler(line);
+    displayTree(lastTree);
   } catch (e) {
     console.error(e);
   }
