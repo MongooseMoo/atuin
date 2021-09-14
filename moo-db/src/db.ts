@@ -28,3 +28,11 @@ export class MooDatabase {
   anonObjects: MooObject[] = [];
   queuedTasks: QueuedTask[] = [];
 }
+
+export function* allVerbs(db: MooDatabase): IterableIterator<Verb> {
+  for (const obj of db.objects.values()) {
+    for (const verb of obj.verbs) {
+      yield { ...verb, oid: obj.oid };
+    }
+  }
+}

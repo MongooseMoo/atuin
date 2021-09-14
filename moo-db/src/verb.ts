@@ -6,6 +6,7 @@ export class Verb {
     public owner: OID,
     public perms: number,
     public preposition: number,
-    public code: string[] = []
+    public code: string[] = [],
+    public oid?: OID
   ) {}
 }

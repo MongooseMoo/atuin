@@ -206,7 +206,7 @@ export class MooDatabaseReader {
 
   readDatabaseV17(db: MooDatabase) {
     this.readPlayers(db);
-    this.readPending(db);
+    this.readPending();
     this.readClocks();
     this.readTaskQueue(db);
     this.readConnections();
@@ -353,7 +353,7 @@ export class MooDatabaseReader {
     throw new Error(`Database parse error on line   ${lineno}: ${message}`);
   }
 
-  readPending(db: MooDatabase) {
+  readPending() {
     const valueLine = this.readLine();
     const valueMatch = pendingValueRe.exec(valueLine);
     if (!valueMatch || !valueMatch.groups) {
@@ -361,12 +361,11 @@ export class MooDatabaseReader {
     }
     const finalizationCount = parseInt(valueMatch.groups.count);
     for (let i = 0; i < finalizationCount; i++) {
-      this.readPendingValue(db);
+      this.readPendingValue();
     }
   }
 
-  //@ts-expect-error
-  readPendingValue(db: MooDatabase) {
+  readPendingValue() {
     return this.readValue();
   }
 
