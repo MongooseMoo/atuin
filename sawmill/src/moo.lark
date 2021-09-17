@@ -58,7 +58,7 @@ spread: SPREAD_OP expression
 
 comparison: expression (comp_op expression)+
 logical_expression: expression (logical_op expression)+
-if: "if" "(" expression ")" block elseif* else? "endif"
+if: "if" "(" expression ")" block* elseif* else? "endif"
 elseif: "elseif" "(" expression ")" block
 else: "else" block
 
