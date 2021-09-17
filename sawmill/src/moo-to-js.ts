@@ -1,5 +1,6 @@
 import { SourceLocation } from "acorn";
 import { generate } from "astring";
+
 import {
   Assignment,
   ASTNode,
@@ -16,6 +17,7 @@ import {
   List,
   Logical,
   MethodCall,
+  ObjectReference,
   Program,
   PropertyReference,
   Return,
@@ -74,6 +76,9 @@ export class MooToJavascriptConverter {
   }
 
   toIntermediate(): ASTNode {
+    if (!this.moocode.length) {
+      return new Program([]);
+    }
     const tree = this.parse();
     return this.convertNode(tree);
   }
@@ -92,6 +97,8 @@ export class MooToJavascriptConverter {
             IntermediateTypes.string,
             node.value!.slice(1, node.value!.length - 1)
           );
+        case "OBJ_NUM":
+          return this.convertObjNum(node);
         default:
           throw new Error(`Unknown node type: ${node.type}`);
       }
@@ -150,6 +157,13 @@ export class MooToJavascriptConverter {
           );
       }
     }
+  }
+
+  convertObjNum(node: MooASTNode): ASTNode {
+    return new ObjectReference(
+      parseInt(node.value!),
+      this.sourceLocation(node)
+    );
   }
 
   convertScatterNames(node: MooASTNode): ASTNode {

@@ -1,11 +1,14 @@
 import { SourceLocation } from "acorn";
+import { log } from "console";
 import {
   AssignmentOperator,
   BinaryOperator,
+  Identifier,
   LogicalOperator,
   UnaryOperator,
 } from "estree";
 import { builders } from "estree-toolkit";
+import { parseMoocode } from "./parser";
 
 export enum IntermediateTypes {
   unknown = "unknown",
@@ -52,7 +55,6 @@ export abstract class ASTNode {
 }
 
 export class Return extends ASTNode {
-  override isExpression = true;
   constructor(
     public value?: ASTNode,
     public override loc: SourceLocation | null = null
@@ -217,19 +219,21 @@ export class Program extends ASTNode {
     public override loc: SourceLocation | null = null
   ) {
     super();
-    body.map((node) => (node.parent = this));
+    body.forEach((node) => (node.parent = this));
   }
 
   @logCall
   toEstree() {
     return builders.program(
       this.body.map((node) => {
-        if (node.isExpression === true) {
+        if (node.isExpression) {
           return builders.expressionStatement(node.toEstree());
         } else {
           return node.toEstree();
         }
-      })
+      }),
+
+      "script"
     );
   }
 }
@@ -260,19 +264,19 @@ export class MethodCall extends ASTNode {
 export class FunctionCall extends ASTNode {
   override isExpression = true;
   constructor(
-    public name: ASTNode,
+    public callee: ASTNode,
     public args: ASTNode[],
     public override loc: SourceLocation | null = null
   ) {
     super();
-    name.parent = this;
+    callee.parent = this;
     args.map((arg) => (arg.parent = this));
   }
 
   @logCall
   toEstree() {
     return builders.callExpression(
-      this.name.toEstree(),
+      this.callee.toEstree(),
       this.args.map((arg) => arg.toEstree())
     );
   }
@@ -327,7 +331,7 @@ export class Compound extends ASTNode {
     public override loc: SourceLocation | null = null
   ) {
     super();
-    body.map((node) => (node.parent = this));
+    body.forEach((node) => (node.parent = this));
   }
 
   @logCall
@@ -531,8 +535,10 @@ export class Break extends ASTNode {
     override loc: SourceLocation | null = null
   ) {
     super();
+    id && (id.parent = this);
   }
 
+  @logCall
   toEstree() {
     return builders.breakStatement();
   }
@@ -544,8 +550,10 @@ export class Continue extends ASTNode {
     override loc: SourceLocation | null = null
   ) {
     super();
+    id && (id.parent = this);
   }
 
+  @logCall
   toEstree() {
     return builders.continueStatement();
   }
@@ -557,8 +565,10 @@ export class ScatterNames extends ASTNode {
     override loc: SourceLocation | null = null
   ) {
     super();
+    names.forEach((name) => (name.parent = this));
   }
 
+  @logCall
   toEstree() {
     return builders.arrayPattern(
       this.names.map((name) => name.toEstree() as any)
@@ -572,9 +582,57 @@ export class Spread extends ASTNode {
     override loc: SourceLocation | null = null
   ) {
     super();
+    this.expression.parent = this;
+  }
+
+  @logCall
+  toEstree() {
+    return builders.spreadElement(this.expression.toEstree());
+  }
+}
+
+export class comment extends ASTNode {
+  constructor(public text: string, override loc: SourceLocation | null = null) {
+    super();
   }
 
   toEstree() {
-    return builders.spreadElement(this.expression.toEstree());
+    throw new Error("Comments are not supported");
+  }
+}
+
+export class ObjectReference extends ASTNode {
+  override isExpression = true;
+  constructor(
+    public number: number,
+    override loc: SourceLocation | null = null
+  ) {
+    super();
+  }
+
+  @logCall
+  toEstree() {
+    return new Variable(`o${this.number}`, this.loc).toEstree();
+  }
+}
+
+export class AnonymousFunction extends ASTNode {
+  override isExpression = true;
+  constructor(
+    public parameters: Variable[],
+    public body: ASTNode,
+    override loc: SourceLocation | null = null
+  ) {
+    super();
+    parameters.forEach((param) => (param.parent = this));
+    body.parent = this;
+  }
+
+  @logCall
+  toEstree() {
+    return builders.arrowFunctionExpression(
+      this.parameters.map((param) => <Identifier>param.toEstree()),
+      this.body.toEstree()
+    );
   }
 }
