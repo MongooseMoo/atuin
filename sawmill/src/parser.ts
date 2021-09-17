@@ -17,7 +17,14 @@ export interface MooASTNode {
 
 export function parseMoocode(moocode: string[]) {
   const code = moocode.join("\n");
-  const parseTree = mooParser.parse(code);
+  try {
+    var parseTree = mooParser.parse(code);
+  } catch (e) {
+    console.log("Failed code ", code);
+    console.log(e);
+
+    return null;
+  }
   return parseTree;
 }
 

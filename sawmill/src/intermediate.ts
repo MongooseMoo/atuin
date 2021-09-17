@@ -285,19 +285,22 @@ export class FunctionCall extends ASTNode {
 export class TryCatch extends ASTNode {
   constructor(
     public tryBlock: ASTNode,
-    public catchBlock: ASTNode,
+    public catchBlocks: ASTNode[] = [],
+    public finallyBlock: ASTNode | null = null,
     public override loc: SourceLocation | null = null
   ) {
     super();
     tryBlock.parent = this;
-    catchBlock.parent = this;
+    catchBlocks.forEach((block) => (block.parent = this));
+    finallyBlock && (finallyBlock.parent = this);
   }
 
   @logCall
   toEstree() {
     return builders.tryStatement(
       this.tryBlock.toEstree(),
-      builders.catchClause(builders.identifier("e"), this.catchBlock.toEstree())
+      null,
+      this.finallyBlock?.toEstree()
     );
   }
 }
@@ -460,7 +463,7 @@ export class Ternary extends ASTNode {
 
   @logCall
   toEstree() {
-    builders.conditionalExpression(
+    return builders.conditionalExpression(
       this.condition.toEstree(),
       this.then.toEstree(),
       this.elseDo.toEstree()

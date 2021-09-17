@@ -25,6 +25,7 @@ import {
   Spread,
   Subscript,
   Ternary,
+  TryCatch,
   TryExpression,
   Unary,
   Value,
@@ -161,7 +162,7 @@ export class MooToJavascriptConverter {
 
   convertObjNum(node: MooASTNode): ASTNode {
     return new ObjectReference(
-      parseInt(node.value!),
+      parseInt(node.value!.slice(1)),
       this.sourceLocation(node)
     );
   }
@@ -380,6 +381,14 @@ export class MooToJavascriptConverter {
     return new Spread(this.convertNode(node.children[1]));
   }
 
+  convertTry(node: MooASTNode): TryCatch {
+    return new TryCatch(
+      this.convertNode(node.children[0]),
+      [this.convertNode(node.children[1])],
+      this.convertNode(node.children[2]),
+      this.sourceLocation(node)
+    );
+  }
   parse() {
     return parseMoocode(this.moocode);
   }

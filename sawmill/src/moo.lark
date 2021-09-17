@@ -32,7 +32,7 @@ IN: "in"
 VAR.-5: (("_"|"$"|LETTER) ("_"|LETTER|DIGIT)*)
 arg_list : "(" [expression ("," expression)*] ")"
 function_call: VAR arg_list
-verb_call: expression ":" (VAR | "(" ESCAPED_STRING ")") arg_list
+verb_call: expression ":" (VAR | ESCAPED_STRING | "(" expression ")") arg_list
 ?flow_statement: break | continue | return
 break: "break" [VAR]
 continue: "continue" [VAR]
@@ -65,9 +65,8 @@ else: "else" block
 for: "for" expression ["," VAR] "in" ("[" expression "]" | "(" expression ")") block "endfor"
 while: "while" VAR? "(" expression ")" block "endwhile"
 fork: "fork" "(" expression ")" block "endfork"
-try: "try" block [except_block]* "endtry"
-except_block: "except" except_clause  block
-except_clause: [VAR ","] "(" VAR ")"
+try: "try" block [except_clause block]* "endtry"
+except_clause: "except" [VAR ","] "(" VAR ")"
 compact_try: "`" expression "!" ("ANY" | expression) ["=>" expression] "'"
 
 ternary: (expression "?" expression "|" expression)
