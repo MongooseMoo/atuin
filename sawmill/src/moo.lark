@@ -41,7 +41,7 @@ return: "return" [expression]
 !binary_op: ("+" | "-" | "*" | "/" | "^" | "%" )
 !comp_op: (IN | "==" | ">=" | "<=" | "!=" | "<" | ">" )
 !logical_op: ("&&" | "||")
-!unary_op: ("!" | "~")
+!unary_op: ("!" | "~" | "-")
 
 assignment: (VAR | prop_ref | subscript) "=" expression
 default_val: "?" VAR "=" expression
@@ -65,9 +65,10 @@ else: "else" block
 for: "for" expression ["," VAR] "in" ("[" expression "]" | "(" expression ")") block "endfor"
 while: "while" VAR? "(" expression ")" block "endwhile"
 fork: "fork" "(" expression ")" block "endfork"
+ANY: "any"
 try: "try" block [except_clause block]* "endtry"
-except_clause: "except" [VAR ","] "(" VAR ")"
-compact_try: "`" expression "!" ("ANY" | expression) ["=>" expression] "'"
+except_clause: "except" [VAR] "(" (VAR | ANY ) ")"
+compact_try: "`" expression "!" (ANY | expression) ["=>" expression] "'"
 
 ternary: (expression "?" expression "|" expression)
 
