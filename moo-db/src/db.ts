@@ -32,7 +32,7 @@ export class MooDatabase {
 export function* allVerbs(db: MooDatabase): IterableIterator<Verb> {
   for (const obj of db.objects.values()) {
     for (const verb of obj.verbs) {
-      yield { ...verb, oid: obj.oid };
+      yield { oid: obj.oid, ...verb };
     }
   }
 }
