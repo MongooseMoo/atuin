@@ -375,6 +375,8 @@ export class Compare extends ASTNode {
 }
 
 export class Variable extends ASTNode {
+  override isExpression = true;
+
   constructor(
     public name: string,
     public override loc: SourceLocation | null = null
@@ -520,7 +522,7 @@ export class TryExpression extends ASTNode {
             builders.catchClause(
               null,
               builders.blockStatement([
-                builders.expressionStatement(this.catchBlock.toEstree()),
+                builders.returnStatement(this.catchBlock.toEstree()),
               ])
             ),
             null // finalizer
