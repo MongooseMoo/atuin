@@ -1,4 +1,3 @@
-import { parse } from "path/posix";
 import { get_parser } from "./mooparser";
 
 const mooParser = get_parser({ propagate_positions: true });
@@ -18,7 +17,6 @@ export interface MooASTNode {
 
 export function parseMoocode(moocode: string[]) {
   const code = moocode.join("\n");
-  console.log(code);
   const parseTree = mooParser.parse(code);
   return parseTree;
 }
