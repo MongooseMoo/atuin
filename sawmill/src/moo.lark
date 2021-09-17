@@ -17,6 +17,7 @@
   | logical_expression
   | comparison
   | "(" expression ")"
+  | spread
   |  unary_expression
   | VAR
 
@@ -52,6 +53,9 @@ subscript: expression "[" ( slice | expression ) "]"
 !slice_op: ".."
 slice: (expression slice_op expression)
 
+SPREAD_OP: "@"
+spread: SPREAD_OP expression
+
 comparison: expression (comp_op expression)+
 logical_expression: expression (logical_op expression)+
 if: "if" "(" expression ")" block elseif* else? "endif"
@@ -62,12 +66,12 @@ for: "for" expression ["," VAR] "in" ("[" expression "]" | "(" expression ")") b
 while: "while" VAR? "(" expression ")" block "endwhile"
 fork: "fork" "(" expression ")" block "endfork"
 try: "try" block [except]* "endtry"
-except: "except" ("ANY" | VAR) ["," VAR] block
+except: "except" ("ANY" | VAR) ["," "(" VAR ")"] block
 
 compact_try: "`" expression "!" ("ANY" | expression) ["=>" expression] "'"
 ternary: (expression "?" expression "|" expression)
 
-block: (statement | if | for | while | try | fork)*
+block: (statement | if | for | while | try | fork )*
 start: block
 
 
