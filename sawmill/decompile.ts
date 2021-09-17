@@ -55,7 +55,7 @@ function decompile(data: string): any {
 }
 
 function decompileJavascript(code: string) {
-  return acorn.parse(code, { ecmaVersion: 2021, sourceType: "module" });
+  return acorn.parse(code, { ecmaVersion: 2021, sourceType: "script" });
 }
 
 function decompileMoo(code: string) {
