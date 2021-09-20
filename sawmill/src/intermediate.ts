@@ -285,13 +285,13 @@ export class FunctionCall extends ASTNode {
 export class TryCatch extends ASTNode {
   constructor(
     public tryBlock: ASTNode,
-    public catchBlocks: ASTNode[] = [],
+    public catchBlock: ASTNode | null = null,
     public finallyBlock: ASTNode | null = null,
     public override loc: SourceLocation | null = null
   ) {
     super();
     tryBlock.parent = this;
-    catchBlocks.forEach((block) => (block.parent = this));
+    catchBlock && (catchBlock.parent = this);
     finallyBlock && (finallyBlock.parent = this);
   }
 
@@ -299,8 +299,8 @@ export class TryCatch extends ASTNode {
   toEstree() {
     return builders.tryStatement(
       this.tryBlock.toEstree(),
-      null,
-      this.finallyBlock?.toEstree()
+      this.catchBlock && this.catchBlock.toEstree(),
+      this.finallyBlock && this.finallyBlock?.toEstree()
     );
   }
 }
@@ -639,5 +639,20 @@ export class AnonymousFunction extends ASTNode {
       this.parameters.map((param) => <Identifier>param.toEstree()),
       this.body.toEstree()
     );
+  }
+}
+
+export class FinallyBlock extends ASTNode {
+  constructor(
+    public body: ASTNode,
+    override loc: SourceLocation | null = null
+  ) {
+    super();
+    body.parent = this;
+  }
+
+  @logCall
+  toEstree() {
+    builders.blockStatement([this.body.toEstree()]);
   }
 }

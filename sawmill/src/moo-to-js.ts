@@ -1,6 +1,5 @@
 import { SourceLocation } from "acorn";
 import { generate } from "astring";
-
 import {
   Assignment,
   ASTNode,
@@ -58,8 +57,6 @@ function noDeclaration(
 export class MooToJavascriptConverter {
   opMap: any = {
     "==": "===",
-    "<=": "<==",
-    ">=": ">==",
     "!=": "!==",
   };
 
@@ -85,6 +82,9 @@ export class MooToJavascriptConverter {
   }
 
   convertNode(node: MooASTNode): ASTNode {
+    if (!node) {
+      throw new Error("node is undefined");
+    }
     if (node.type) {
       switch (node.type) {
         case "VAR":
@@ -122,6 +122,8 @@ export class MooToJavascriptConverter {
           return this.convertVerbCall(node);
         case "function_call":
           return this.convertFunctionCall(node);
+        case "try":
+          return this.convertTry(node);
         case "compact_try":
           return this.convertCompactTry(node);
         case "prop_ref":
@@ -325,7 +327,6 @@ export class MooToJavascriptConverter {
     return new MethodCall(obj, name, args, this.sourceLocation(node));
   }
 
-  @noDeclaration
   convertBlock(node: MooASTNode): Compound {
     const body = node.children.map((child) => this.convertNode(child));
     return new Compound(body, this.sourceLocation(node));
@@ -382,13 +383,26 @@ export class MooToJavascriptConverter {
   }
 
   convertTry(node: MooASTNode): TryCatch {
+    const body = this.convertNode(node.children[0]);
+    let catchBlock = null;
+    let finallyBlock = null;
+    if (node.children.length >= 2) {
+      const catchNode = node.children[1];
+      catchBlock = this.convertNode(node.children[1]);
+      console.log("Catch block ", catchBlock);
+    }
+    if (node.children.length >= 3) {
+      finallyBlock = this.convertNode(node.children[node.children.length]);
+      console.log("Finally block ", finallyBlock);
+    }
     return new TryCatch(
-      this.convertNode(node.children[0]),
-      [this.convertNode(node.children[1])],
-      this.convertNode(node.children[2]),
+      body,
+      catchBlock,
+      finallyBlock,
       this.sourceLocation(node)
     );
   }
+
   parse() {
     return parseMoocode(this.moocode);
   }

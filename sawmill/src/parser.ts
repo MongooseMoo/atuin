@@ -16,7 +16,7 @@ export interface MooASTNode {
 }
 
 export function parseMoocode(moocode: string[]) {
-  const code = moocode.join("\n");
+  const code = `${moocode.join("\n")}\n`;
   try {
     var parseTree = mooParser.parse(code);
   } catch (e) {
