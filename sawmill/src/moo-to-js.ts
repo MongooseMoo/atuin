@@ -1,5 +1,6 @@
 import { SourceLocation } from "acorn";
 import { generate } from "astring";
+import { builders } from "estree-toolkit";
 import {
   Assignment,
   ASTNode,
@@ -195,8 +196,9 @@ export class MooToJavascriptConverter {
     }
     return new TryExpression(
       this.convertNode(node.children[0]),
-      this.convertNode(node.children[1]),
+
       this.convertNode(node.children[2]),
+      this.convertNode(node.children[1]),
       this.sourceLocation(node)
     );
   }
@@ -388,11 +390,13 @@ export class MooToJavascriptConverter {
     let finallyBlock = null;
     if (node.children.length >= 2) {
       const catchNode = node.children[1];
-      catchBlock = this.convertNode(node.children[1]);
+      catchBlock = this.convertNode(catchNode.children[1]);
       console.log("Catch block ", catchBlock);
     }
     if (node.children.length >= 3) {
-      finallyBlock = this.convertNode(node.children[node.children.length]);
+      finallyBlock = this.convertNode(
+        node.children[node.children.length].children[0]
+      );
       console.log("Finally block ", finallyBlock);
     }
     return new TryCatch(

@@ -58,7 +58,7 @@ spread: SPREAD_OP expression
 
 comparison: expression (comp_op expression)+
 logical_expression: expression (logical_op expression)+
-if: "if" "(" expression ")" block* elseif* else? "endif"
+if: "if" "(" expression ")" block elseif* else? "endif"
 elseif: "elseif" "(" expression ")" block
 else: "else" block
 
@@ -66,8 +66,11 @@ for: "for" expression ["," VAR] "in" ("[" expression "]" | "(" expression ")") b
 while: "while" VAR? "(" expression ")" block "endwhile"
 fork: "fork" "(" expression ")" block "endfork"
 ANY: "any"
-try: "try" block [except_clause block]* "endtry"
+try: "try" [block] except_block* [finally_block] "endtry"
+except_block: except_clause block
 except_clause: "except" [VAR] "(" (VAR | ANY ) ")"
+finally_block:  "finally" block
+
 compact_try: "`" expression "!" (ANY | expression) ["=>" expression] "'"
 
 ternary: (expression "?" expression "|" expression)

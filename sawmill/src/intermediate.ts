@@ -75,23 +75,22 @@ export class Return extends ASTNode {
 export class If extends ASTNode {
   constructor(
     public condition: Compare,
-    public then: ASTNode,
+    public then?: ASTNode,
     public elseDo?: ASTNode,
     public override loc: SourceLocation | null = null
   ) {
     super();
     condition.parent = this;
-    then.parent = this;
-    if (elseDo) {
-      elseDo.parent = this;
-    }
+    then && (then.parent = this);
+
+    elseDo && (elseDo.parent = this);
   }
 
   @logCall
   toEstree() {
     return builders.ifStatement(
       this.condition.toEstree(),
-      this.then.toEstree(),
+      this.then?.toEstree(),
       this.elseDo?.toEstree()
     );
   }
@@ -299,7 +298,7 @@ export class TryCatch extends ASTNode {
   toEstree() {
     return builders.tryStatement(
       this.tryBlock.toEstree(),
-      this.catchBlock && this.catchBlock.toEstree(),
+      this.catchBlock && builders.catchClause(null, this.catchBlock.toEstree()),
       this.finallyBlock && this.finallyBlock?.toEstree()
     );
   }
@@ -617,7 +616,10 @@ export class ObjectReference extends ASTNode {
 
   @logCall
   toEstree() {
-    return new Variable(`o${this.number}`, this.loc).toEstree();
+    return new Variable(
+      `o${this.number >= 0 ? this.number : "_" + Math.abs(this.number)}`,
+      this.loc
+    ).toEstree();
   }
 }
 
