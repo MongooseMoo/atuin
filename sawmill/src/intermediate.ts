@@ -1,5 +1,4 @@
 import { SourceLocation } from "acorn";
-import { log } from "console";
 import {
   AssignmentOperator,
   BinaryOperator,
@@ -8,8 +7,6 @@ import {
   UnaryOperator,
 } from "estree";
 import { builders } from "estree-toolkit";
-import { resourceLimits } from "worker_threads";
-import { parseMoocode } from "./parser";
 
 export enum IntermediateTypes {
   unknown = "unknown",
@@ -258,6 +255,11 @@ export class Program extends ASTNode {
       "script"
     );
   }
+
+  toMoo(): string[] {
+    //@ts-expect-error
+    return this.body.map((node) => `${node.toMoo && node.toMoo()};`);
+  }
 }
 
 export class MethodCall extends ASTNode {
@@ -306,24 +308,32 @@ export class FunctionCall extends ASTNode {
 
 export class TryCatch extends ASTNode {
   constructor(
-    public tryBlock: ASTNode,
-    public catchBlock: ASTNode | null = null,
+    public tryBlock: ASTNode | null = null,
+    public exceptBlocks: ExceptBlock[] = [],
     public finallyBlock: ASTNode | null = null,
     public override loc: SourceLocation | null = null
   ) {
     super();
-    tryBlock.parent = this;
-    catchBlock && (catchBlock.parent = this);
+    tryBlock && (tryBlock.parent = this);
+    exceptBlocks.map((block) => (block.parent = this));
     finallyBlock && (finallyBlock.parent = this);
   }
 
   @logCall
   toEstree() {
     return builders.tryStatement(
-      this.tryBlock.toEstree(),
-      this.catchBlock && builders.catchClause(null, this.catchBlock.toEstree()),
-      this.finallyBlock && this.finallyBlock?.toEstree()
+      this.tryBlock?.toEstree() || builders.blockStatement([]),
+      this.catchBlockEstree(),
+      this.finallyBlock?.toEstree()
     );
+  }
+
+  catchBlockEstree() {
+    if (this.exceptBlocks.length === 0) {
+      // In Javascript every try must have at least one except
+      return builders.catchClause(null, builders.blockStatement([]));
+    }
+    return this.exceptBlocks[0].toEstree();
   }
 }
 
@@ -434,7 +444,15 @@ export class PropertyReference extends ASTNode {
 
   @logCall
   toEstree() {
-    return builders.memberExpression(this.obj.toEstree(), this.prop.toEstree());
+    return builders.memberExpression(
+      this.obj.toEstree(),
+      this.prop.toEstree(),
+      this.isComputed()
+    );
+  }
+
+  isComputed() {
+    return !(this.prop instanceof Variable);
   }
 }
 
@@ -672,6 +690,28 @@ export class AnonymousFunction extends ASTNode {
   }
 }
 
+export class ExceptBlock extends ASTNode {
+  constructor(
+    public exceptionType?: ASTNode,
+    public variable?: Variable,
+    public body?: ASTNode,
+    override loc: SourceLocation | null = null
+  ) {
+    super();
+    exceptionType && (exceptionType.parent = this);
+    variable && (variable.parent = this);
+    body && (body.parent = this);
+  }
+
+  @logCall
+  toEstree() {
+    return builders.catchClause(
+      this.exceptionType?.toEstree(),
+      this.body?.toEstree()
+    );
+  }
+}
+
 export class FinallyBlock extends ASTNode {
   constructor(
     public body: ASTNode,
@@ -683,6 +723,6 @@ export class FinallyBlock extends ASTNode {
 
   @logCall
   toEstree() {
-    builders.blockStatement([this.body.toEstree()]);
+    return builders.blockStatement([this.body.toEstree()]);
   }
 }

@@ -10,6 +10,8 @@ import {
   Compound,
   Continue,
   Dictionary,
+  ExceptBlock,
+  FinallyBlock,
   ForInLoop,
   FunctionCall,
   If,
@@ -125,6 +127,10 @@ export class MooToJavascriptConverter {
           return this.convertFunctionCall(node);
         case "try":
           return this.convertTry(node);
+        case "except_block":
+          return this.convertExcept(node);
+        case "finally_block":
+          return this.convertFinally(node);
         case "compact_try":
           return this.convertCompactTry(node);
         case "prop_ref":
@@ -286,6 +292,7 @@ export class MooToJavascriptConverter {
     const condition = this.convertNode(node.children[0]) as Compare;
     let consequent, alternate;
     const elseIfs: If[] = [];
+
     node.children.slice(1).forEach((child) => {
       if (child.data === "block") {
         consequent = this.convertNode(child);
@@ -297,6 +304,7 @@ export class MooToJavascriptConverter {
         throw new Error(`Unknown if child ${child.data}`);
       }
     });
+
     return new If(
       condition,
       consequent,
@@ -395,28 +403,55 @@ export class MooToJavascriptConverter {
   }
 
   convertTry(node: MooASTNode): TryCatch {
-    const body = this.convertNode(node.children[0]);
-    let catchBlock = null;
-    let finallyBlock = null;
-    if (node.children.length >= 2) {
-      const catchNode = node.children[1];
-      console.log(catchNode.children);
-      if (catchNode.children.length === 2) {
-        catchBlock = this.convertNode(
-          catchNode.children[catchNode.children.length - 1]
-        );
+    let body;
+    if (node.children.length) {
+      body = this.convertNode(node.children[0]);
+    }
+    let catchBlocks: ExceptBlock[] = [];
+    let finallyBlock: ASTNode | undefined;
+    node.children.slice(1).forEach((child) => {
+      let converted = this.convertNode(child);
+      if (converted instanceof ExceptBlock) {
+        catchBlocks.push(converted);
+      } else if (converted instanceof FinallyBlock) {
+        finallyBlock = converted;
       }
-    }
-    if (node.children.length >= 3) {
-      finallyBlock = this.convertNode(
-        node.children[node.children.length - 1].children[0]
-      );
-      console.log("Finally block ", finallyBlock);
-    }
+    });
     return new TryCatch(
       body,
-      catchBlock,
+      catchBlocks,
       finallyBlock,
+      this.sourceLocation(node)
+    );
+  }
+
+  convertFinally(node: MooASTNode): FinallyBlock {
+    return new FinallyBlock(
+      this.convertNode(node.children[0]),
+      this.sourceLocation(node)
+    );
+  }
+
+  convertExcept(node: MooASTNode): ExceptBlock {
+    let exceptionType, exceptionVariable, body;
+    if (node.children.length) {
+      const exceptClause = node.children[0];
+      if (exceptClause.children.length) {
+        exceptionType = this.convertNode(exceptClause.children[0]);
+      }
+      if (exceptClause.children.length > 1) {
+        exceptionVariable = this.convertNode(
+          exceptClause.children[1]
+        ) as Variable;
+      }
+      if (node.children.length > 1) {
+        body = this.convertNode(node.children[1]);
+      }
+    }
+    return new ExceptBlock(
+      exceptionType,
+      exceptionVariable,
+      body,
       this.sourceLocation(node)
     );
   }
