@@ -726,3 +726,33 @@ export class FinallyBlock extends ASTNode {
     return builders.blockStatement([this.body.toEstree()]);
   }
 }
+
+export class Slice extends ASTNode {
+  override isExpression = true;
+  constructor(
+    public start?: ASTNode,
+    public end?: ASTNode,
+    override loc: SourceLocation | null = null
+  ) {
+    super();
+    start && (start.parent = this);
+    end && (end.parent = this);
+  }
+
+  @logCall
+  toEstree() {
+    const arrayProto = builders.memberExpression(
+      builders.identifier("Array"),
+      builders.identifier("prototype"),
+      false
+    );
+    return builders.callExpression(
+      builders.memberExpression(
+        arrayProto,
+        builders.identifier("slice"),
+        false
+      ),
+      [this.start?.toEstree(), this.end?.toEstree()]
+    );
+  }
+}

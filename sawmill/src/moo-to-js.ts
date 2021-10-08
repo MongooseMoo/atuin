@@ -1,6 +1,5 @@
 import { SourceLocation } from "acorn";
 import { generate } from "astring";
-import { builders } from "estree-toolkit";
 import {
   Assignment,
   ASTNode,
@@ -24,6 +23,7 @@ import {
   PropertyReference,
   Return,
   ScatterNames,
+  Slice,
   Spread,
   Subscript,
   Ternary,
@@ -65,13 +65,13 @@ export class MooToJavascriptConverter {
 
   nameMap: any = {
     typeof: "type_of",
+    delete: "delete_",
   };
 
   constructor(public moocode: string[]) {}
 
   toJavascript() {
     return generate(this.toIntermediate().toEstree(), {
-      sourceMap: true,
       comments: true,
     });
   }
@@ -153,6 +153,8 @@ export class MooToJavascriptConverter {
           return this.convertTernary(node);
         case "subscript":
           return this.convertSubscript(node);
+        case "slice":
+          return this.convertSlice(node);
         case "spread":
           return this.convertSpread(node);
         case "break":
@@ -454,6 +456,19 @@ export class MooToJavascriptConverter {
       body,
       this.sourceLocation(node)
     );
+  }
+
+  convertSlice(node: MooASTNode): Slice {
+    let start, end;
+    if (node.children.length) {
+      // start
+      start = this.convertNode(node.children[0]);
+    }
+    if (node.children.length > 2) {
+      // end
+      end = this.convertNode(node.children[2]);
+    }
+    return new Slice(start, end, this.sourceLocation(node));
   }
 
   parse() {
