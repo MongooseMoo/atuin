@@ -8,6 +8,7 @@ import {
   UnaryOperator,
 } from "estree";
 import { builders } from "estree-toolkit";
+import { resourceLimits } from "worker_threads";
 import { parseMoocode } from "./parser";
 
 export enum IntermediateTypes {
@@ -76,13 +77,16 @@ export class If extends ASTNode {
   constructor(
     public condition: Compare,
     public then?: ASTNode,
+    public elseIfs: If[] = [],
     public elseDo?: ASTNode,
     public override loc: SourceLocation | null = null
   ) {
     super();
     condition.parent = this;
     then && (then.parent = this);
-
+    elseIfs.forEach((ifNode) => {
+      ifNode.parent = this;
+    });
     elseDo && (elseDo.parent = this);
   }
 
@@ -91,8 +95,27 @@ export class If extends ASTNode {
     return builders.ifStatement(
       this.condition.toEstree(),
       this.then?.toEstree(),
-      this.elseDo?.toEstree()
+      this.buildElseBlockEstree()
     );
+  }
+
+  buildElseBlockEstree(): any {
+    if (this.elseIfs.length) {
+      if (this.elseDo) {
+        // else ifs + else
+        return builders.blockStatement([
+          ...this.elseIfs.map((ifNode) => ifNode.toEstree()),
+          this.elseDo.toEstree(),
+        ]);
+      } else {
+        // else ifs only
+        return builders.blockStatement(
+          this.elseIfs.map((ifNode) => ifNode.toEstree())
+        );
+      }
+    } else {
+      return this.elseDo?.toEstree();
+    }
   }
 }
 
@@ -338,8 +361,12 @@ export class Compound extends ASTNode {
 
   @logCall
   toEstree() {
-    return builders.blockStatement(
+    const result = builders.blockStatement(
       this.body.map((node) => {
+        if (node instanceof Value && node.type === IntermediateTypes.string) {
+          // would like to do comment generation
+          return builders.expressionStatement(node.toEstree());
+        }
         if (node.isExpression) {
           return builders.expressionStatement(node.toEstree());
         } else {
@@ -347,6 +374,7 @@ export class Compound extends ASTNode {
         }
       })
     );
+    return result;
   }
 }
 
@@ -498,13 +526,13 @@ export class TryExpression extends ASTNode {
   override isExpression = true;
   constructor(
     public tryExpression: ASTNode,
-    public catchBlock: ASTNode,
+    public catchBlock?: ASTNode,
     public errorType?: ASTNode,
     public override loc: SourceLocation | null = null
   ) {
     super();
     tryExpression.parent = this;
-    catchBlock.parent = this;
+    catchBlock && (catchBlock.parent = this);
     errorType && (errorType.parent = this);
   }
 
@@ -521,7 +549,7 @@ export class TryExpression extends ASTNode {
             builders.catchClause(
               null,
               builders.blockStatement([
-                builders.returnStatement(this.catchBlock.toEstree()),
+                builders.returnStatement(this.catchBlock?.toEstree()),
               ])
             ),
             null // finalizer

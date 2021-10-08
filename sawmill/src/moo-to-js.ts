@@ -184,19 +184,19 @@ export class MooToJavascriptConverter {
     return new Break(undefined, this.sourceLocation(node));
   }
 
+  @noDeclaration
   convertCompactTry(node: MooASTNode): TryExpression {
     const hasErrorType = node.children.length === 3;
     if (!hasErrorType) {
       return new TryExpression(
         this.convertNode(node.children[0]),
-        this.convertNode(node.children[1]),
         undefined,
+        this.convertNode(node.children[1]),
         this.sourceLocation(node)
       );
     }
     return new TryExpression(
       this.convertNode(node.children[0]),
-
       this.convertNode(node.children[2]),
       this.convertNode(node.children[1]),
       this.sourceLocation(node)
@@ -281,25 +281,35 @@ export class MooToJavascriptConverter {
     return new Compare(left, convertedOp, right, this.sourceLocation(node));
   }
 
+  @noDeclaration
   convertIf(node: MooASTNode): If {
-    const canDeclareVariables = context.canDeclare;
-    context.canDeclare = false;
     const condition = this.convertNode(node.children[0]) as Compare;
-    context.canDeclare = canDeclareVariables;
-    const consequent = this.convertNode(node.children[1]);
-    let alternate: ASTNode | undefined;
-    if (node.children.length === 3) {
-      alternate = this.convertNode(node.children[2].children[0]);
-    }
-    return new If(condition, consequent, alternate, this.sourceLocation(node));
+    let consequent, alternate;
+    const elseIfs: If[] = [];
+    node.children.slice(1).forEach((child) => {
+      if (child.data === "block") {
+        consequent = this.convertNode(child);
+      } else if (child.data === "elseif") {
+        elseIfs.push(this.convertIf(child));
+      } else if (child.data === "else") {
+        alternate = this.convertNode(child.children[0]);
+      } else {
+        throw new Error(`Unknown if child ${child.data}`);
+      }
+    });
+    return new If(
+      condition,
+      consequent,
+      elseIfs,
+      alternate,
+      this.sourceLocation(node)
+    );
   }
 
+  @noDeclaration
   convertForIn(node: MooASTNode): ForInLoop {
-    const canDeclareVariables = context.canDeclare;
-    context.canDeclare = false;
     const variable = this.convertNode(node.children[0]);
     const list = this.convertNode(node.children[1]);
-    context.canDeclare = canDeclareVariables;
     const body = this.convertNode(node.children[2]);
     return new ForInLoop(variable, list, body, this.sourceLocation(node));
   }
@@ -390,12 +400,16 @@ export class MooToJavascriptConverter {
     let finallyBlock = null;
     if (node.children.length >= 2) {
       const catchNode = node.children[1];
-      catchBlock = this.convertNode(catchNode.children[1]);
-      console.log("Catch block ", catchBlock);
+      console.log(catchNode.children);
+      if (catchNode.children.length === 2) {
+        catchBlock = this.convertNode(
+          catchNode.children[catchNode.children.length - 1]
+        );
+      }
     }
     if (node.children.length >= 3) {
       finallyBlock = this.convertNode(
-        node.children[node.children.length].children[0]
+        node.children[node.children.length - 1].children[0]
       );
       console.log("Finally block ", finallyBlock);
     }
