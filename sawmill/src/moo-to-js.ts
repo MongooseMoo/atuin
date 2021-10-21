@@ -274,6 +274,9 @@ export class MooToJavascriptConverter {
   }
 
   convertStart(node: MooASTNode): Program {
+    if (node.children.length === 0) {
+      return new Program([], this.sourceLocation(node));
+    }
     return new Program(
       node.children[0].children.map((child) => this.convertNode(child)),
       this.sourceLocation(node)
@@ -301,7 +304,9 @@ export class MooToJavascriptConverter {
       } else if (child.data === "elseif") {
         elseIfs.push(this.convertIf(child));
       } else if (child.data === "else") {
-        alternate = this.convertNode(child.children[0]);
+        if (child.children.length) {
+          alternate = this.convertNode(child.children[0]);
+        }
       } else {
         throw new Error(`Unknown if child ${child.data}`);
       }
