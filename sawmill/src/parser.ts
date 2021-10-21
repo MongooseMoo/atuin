@@ -1,6 +1,6 @@
 import { get_parser } from "./mooparser";
 
-const mooParser = get_parser({ propagate_positions: true });
+const mooParser = get_parser();
 
 export interface MooASTNode {
   data: string;
@@ -15,16 +15,10 @@ export interface MooASTNode {
   end_column: number;
 }
 
-export function parseMoocode(moocode: string[]) {
-  const code = `${moocode.join("\n")}\n`;
-  try {
-    var parseTree = mooParser.parse(code);
-  } catch (e) {
-    console.log("Failed code ", code);
-    console.log(e);
+export function parseMoocode(moocode: string[]): MooASTNode {
+  const code = moocode.join("\n");
 
-    return null;
-  }
+  const parseTree = mooParser.parse(code);
   return parseTree;
 }
 
