@@ -6,7 +6,7 @@ import {
   LogicalOperator,
   UnaryOperator,
 } from "estree";
-import { builders } from "estree-toolkit";
+import { builders, types } from "estree-toolkit";
 
 export enum IntermediateTypes {
   unknown = "unknown",
@@ -91,7 +91,7 @@ export class If extends ASTNode {
   toEstree() {
     return builders.ifStatement(
       this.condition.toEstree(),
-      this.then?.toEstree(),
+      this.then?.toEstree() || builders.blockStatement([]),
       this.buildElseBlockEstree()
     );
   }
@@ -111,7 +111,7 @@ export class If extends ASTNode {
         );
       }
     } else {
-      return this.elseDo?.toEstree();
+      return this.elseDo?.toEstree() || null;
     }
   }
 }
@@ -590,7 +590,7 @@ export class Break extends ASTNode {
 
   @logCall
   toEstree() {
-    return builders.breakStatement();
+    return builders.breakStatement(this.id?.toEstree() as Identifier);
   }
 }
 
